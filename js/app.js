@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=18a8d12338";
-import { SceneClock } from "./timeline.js?v=18a8d12338";
-import { buildCupScene } from "./scene.js?v=18a8d12338";
-import { capturePhoto, sharePhoto } from "./capture.js?v=18a8d12338";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=96a885b366";
+import { SceneClock } from "./timeline.js?v=96a885b366";
+import { buildCupScene } from "./scene.js?v=96a885b366";
+import { capturePhoto, sharePhoto } from "./capture.js?v=96a885b366";
+import { kickCameraVideo } from "./camera-kick.js?v=96a885b366";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -35,6 +36,14 @@ async function main() {
     uiLoading: "no", uiScanning: "no", uiError: "no",
   });
   const { renderer, scene, camera } = mindar;
+  kickCameraVideo($("stage"), {
+    log: (m) => window.kccDebug?.(m),
+    onNeedTap: (play) => {
+      const btn = $("tap-start");
+      btn.hidden = false;
+      btn.onclick = () => { btn.hidden = true; play().catch((e) => { console.error(e); btn.hidden = false; }); };
+    },
+  });
   const loader = new THREE.TextureLoader();
   const load = (url) => new Promise((res, rej) => loader.load(versioned(url), (t) => {
     t.colorSpace = THREE.SRGBColorSpace; res(t); }, undefined, rej));
