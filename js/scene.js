@@ -2,12 +2,18 @@
 // anchor on the cup surface, +z towards the camera, +y up. Angles around the
 // cup: theta = 2π·u, measured from +z towards +x (same as CylinderGeometry),
 // so the panorama reads left→right from outside.
+//
+// 2026-09-28 phone test: separate landmark cards read as confusing, so the
+// scene is just the panorama ring — it rises out of the rim and spins.
 import * as THREE from "three";
-import { timeline, orderFrom, ease } from "./timeline.js?v=131d05528a";
+import { ease } from "./timeline.js?v=f53daf7c52";
 
-// Direction the cards orbit and the ring spins. -1 = clockwise seen from
-// above; the first phone test (2026-09-28) found +1 ran the "wrong way".
+// Direction the ring spins. -1 = clockwise seen from above; the first phone
+// test found +1 ran the "wrong way".
 const SPIN_DIR = -1;
+const RISE = 1.4;        // s, ring grows up out of the rim
+const SPIN = 0.35;       // rad/s
+const DONE_AT = 4.0;     // s, when the finale buttons appear
 
 export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
   const root = new THREE.Group();
@@ -16,24 +22,6 @@ export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
   root.add(cup);
   const spin = new THREE.Group();                  // turns so the tracked landmark faces us
   cup.add(spin);
-  const orbit = new THREE.Group();
-  spin.add(orbit);
-
-  const cw = sp.cardWidth * 0.8, ch = sp.cardHeight * 0.8;
-  const geo = new THREE.PlaneGeometry(cw, ch);
-  geo.translate(0, ch / 2, 0);                     // pivot at the card's bottom edge
-  const cards = variant.landmarks.map((lm, i) => {
-    const holder = new THREE.Group();
-    holder.rotation.y = 2 * Math.PI * lm.u;
-    orbit.add(holder);
-    const mat = new THREE.MeshBasicMaterial({
-      map: tex.cards[i], transparent: true, side: THREE.DoubleSide, depthWrite: false });
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(0, sp.rimY, sp.cupRadius * 1.05);
-    m.userData.index = i;
-    holder.add(m);
-    return m;
-  });
 
   // The ring shows the panorama band twice around (keeps the band low while
   // its proportions stay unstretched), hugging the cup just above the rim.
@@ -44,46 +32,37 @@ export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
   tex.ring.repeat.set(RING_REPEAT, 1);
   tex.ring.needsUpdate = true;
   const ringH = img && img.width > 0
-    ? 2 * Math.PI * ringR * (img.height / img.width) / RING_REPEAT : ch * 0.9;
-  const ring = new THREE.Mesh(
-    new THREE.CylinderGeometry(ringR, ringR, ringH, 96, 1, true),
-    new THREE.MeshBasicMaterial({ map: tex.ring, transparent: true, opacity: 0,
-      side: THREE.DoubleSide, depthWrite: false }));
-  ring.position.y = sp.rimY + ringH / 2 + 0.05;
-  ring.visible = false;
+    ? 2 * Math.PI * ringR * (img.height / img.width) / RING_REPEAT : sp.cardHeight * 0.7;
+  const geo = new THREE.CylinderGeometry(ringR, ringR, ringH, 96, 1, true);
+  geo.translate(0, ringH / 2, 0);                  // pivot at the ring's bottom edge
+  const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    map: tex.ring, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+  ring.position.y = sp.rimY + 0.05;
   spin.add(ring);
 
   if (debug) {
     // ?debug guide: where the scene thinks the cup and the tracked target are.
-    const line = new THREE.LineBasicMaterial({ color: 0x00ff66 });
     const cyl = new THREE.LineSegments(new THREE.EdgesGeometry(
-      new THREE.CylinderGeometry(sp.cupRadius, sp.cupRadius, sp.rimY * 2, 24, 1, true)), line);
+      new THREE.CylinderGeometry(sp.cupRadius, sp.cupRadius, sp.rimY * 2, 24, 1, true)),
+      new THREE.LineBasicMaterial({ color: 0x00ff66 }));
     cup.add(cyl);                                   // centred on the target's height, top at the rim
     const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1)),
       new THREE.LineBasicMaterial({ color: 0xff3366 }));
     root.add(box);                                  // the tracked target, 1×1 target widths
   }
 
-  let first = 0;
   return {
-    root, cards,
+    root,
+    cards: [],                                      // no tappable cards any more
     setTracked(i) { spin.rotation.y = -2 * Math.PI * variant.landmarks[i].u; },
-    setFirst(i) { first = i; },
-    isDone(t) { return timeline(t, cards.length).done; },
+    setFirst() {},
+    isDone(t) { return t >= DONE_AT; },
     update(t) {
-      const s = timeline(t, cards.length);
-      orderFrom(cards.length, first).forEach((idx, k) => {
-        const m = cards[idx];
-        const r = s.rise[k] * (1 - s.merge);
-        m.visible = r > 0.001;
-        m.scale.set(1, Math.max(r, 0.001), 1);
-        m.material.opacity = r;
-        m.position.z = sp.cupRadius * (1.05 + 0.45 * ease(s.orbitT));
-      });
-      orbit.rotation.y = SPIN_DIR * s.orbitAngle;
-      ring.visible = s.merge > 0;
-      ring.material.opacity = s.merge;
-      ring.rotation.y = SPIN_DIR * (s.orbitAngle + s.ringSpin);   // pick up where the cards' orbit left off
+      const r = ease(t / RISE);
+      ring.scale.set(1, Math.max(r, 0.001), 1);
+      ring.material.opacity = r;
+      ring.visible = r > 0.001;
+      ring.rotation.y = SPIN_DIR * t * SPIN;
     },
   };
 }

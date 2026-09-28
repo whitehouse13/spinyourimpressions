@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=131d05528a";
-import { SceneClock } from "./timeline.js?v=131d05528a";
-import { buildCupScene } from "./scene.js?v=131d05528a";
-import { capturePhoto, sharePhoto } from "./capture.js?v=131d05528a";
-import { kickCameraVideo } from "./camera-kick.js?v=131d05528a";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=f53daf7c52";
+import { SceneClock } from "./timeline.js?v=f53daf7c52";
+import { buildCupScene } from "./scene.js?v=f53daf7c52";
+import { capturePhoto, sharePhoto } from "./capture.js?v=f53daf7c52";
+import { kickCameraVideo } from "./camera-kick.js?v=f53daf7c52";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -34,6 +34,10 @@ async function main() {
   const mindar = new MindARThree({
     container: $("stage"), imageTargetSrc: versioned("data/targets.mind"), maxTrack: 1,
     uiLoading: "no", uiScanning: "no", uiError: "no",
+    // Steadier pose on a hand-held curved cup (phone test showed heavy
+    // jitter and lost/found flicker): stronger One-Euro smoothing, and ride
+    // out short tracking drop-outs instead of pausing on every missed frame.
+    filterMinCF: 0.0001, filterBeta: 0.001, missTolerance: 10,
   });
   const { renderer, scene, camera } = mindar;
   kickCameraVideo($("stage"), {
@@ -81,8 +85,7 @@ async function main() {
     if (!cache.has(id)) {
       const p = (async () => {
         const v = manifest.variants.find((x) => x.id === id);
-        const tex = { cards: await Promise.all(v.landmarks.map((l) => load(l.card))),
-                      ring: await load(v.ring) };
+        const tex = { ring: await load(v.ring) };   // ring-only scene since 2026-09-28
         return { v, cup: buildCupScene(manifest.scene, v, tex, { debug: !!window.kccDebug }) };
       })();
       cache.set(id, p);
