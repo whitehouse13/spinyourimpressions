@@ -3,7 +3,7 @@
 // cup: theta = 2π·u, measured from +z towards +x (same as CylinderGeometry),
 // so the panorama reads left→right from outside.
 import * as THREE from "three";
-import { timeline, orderFrom, ease } from "./timeline.js?v=15329fcd4e";
+import { timeline, orderFrom, ease } from "./timeline.js?v=18a8d12338";
 
 export function buildCupScene(sp, variant, tex) {
   const root = new THREE.Group();
