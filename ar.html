@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Bring your cup to life</title>
+  <link rel="stylesheet" href="css/site.css?v=15329fcd4e">
+  <style>
+    html, body { background: #000; overflow: hidden; }
+    #stage { position: fixed; inset: 0; }
+    #stage canvas { pointer-events: auto; }
+    #hud-buttons { position: fixed; right: 16px; top: 16px; z-index: 7; }
+    #hud-buttons .btn { width: auto; padding: 10px 14px; background: var(--overlay);
+      color: var(--on-overlay); border-color: var(--on-overlay); }
+    #preview img { max-width: 100%; max-height: 60vh; border-radius: 12px; }
+    #picker .list { display: flex; flex-direction: column; gap: 10px; width: min(340px, 100%); }
+  </style>
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+  } }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <div id="loading" class="panel"><p>Starting camera…</p></div>
+
+  <div id="inapp" class="panel" hidden>
+    <h2>Open in your browser</h2>
+    <p>The camera doesn't work inside Instagram or TikTok. Tap ••• and choose
+      <b>Open in Safari</b> / <b>Open in Chrome</b>.</p>
+  </div>
+
+  <div id="nocam" class="panel" hidden>
+    <h2>Camera not available</h2>
+    <p>Allow camera access for this site and try again — or watch the tour instead.</p>
+    <button class="btn primary" onclick="location.reload()">Try again</button>
+    <a class="btn" href="video/spin-viewer-A_tour-demo_30s.mp4">Watch the tour</a>
+  </div>
+
+  <p id="scanning" class="hint" hidden>Open the gates and point at the cup</p>
+  <p id="lost" class="hint" hidden>Point back at the cup</p>
+  <p id="photo-error" class="hint" hidden>Couldn't take the photo — try again.</p>
+  <p id="loading-city" class="hint" hidden>Loading the city…</p>
+  <p id="load-error" class="hint" hidden>Couldn't load the city — check your connection and try again.</p>
+
+  <div id="picker" class="panel" hidden>
+    <h2>Which cup do you have?</h2>
+    <div class="list" id="picker-list"></div>
+    <button class="btn" id="picker-retry">Keep scanning</button>
+  </div>
+
+  <div id="info" class="card" hidden>
+    <b id="info-name"></b>
+    <p id="info-blurb" style="margin:.3em 0 0"></p>
+  </div>
+
+  <div id="hud-buttons" hidden>
+    <button class="btn" id="photo-btn">📸 Photo</button>
+  </div>
+
+  <div id="finale" class="panel" hidden style="background:transparent;justify-content:flex-end;pointer-events:none">
+    <h2 style="text-shadow:0 2px 8px #000">Spin Your Impressions</h2>
+    <button class="btn primary" id="replay-btn" style="pointer-events:auto">Replay</button>
+    <a class="btn" style="pointer-events:auto;background:var(--overlay)"
+       href="https://www.instagram.com/spin.your.impressions/">Follow @spin.your.impressions</a>
+  </div>
+
+  <div id="preview" class="panel" hidden>
+    <img id="preview-img" alt="Your photo">
+    <button class="btn primary" id="share-btn">Share</button>
+    <button class="btn" id="preview-close">Close</button>
+  </div>
+
+  <script type="module" src="js/app.js?v=15329fcd4e"></script>
+  <script>
+    // Watchdog (plain script, runs even where modules don't): if app.js never
+    // evaluated — CDN blocked, no import-map support — nothing else can take
+    // the visitor off "Starting camera…", so offer the fallback panel.
+    setTimeout(function () {
+      if (window.kccBoot || window.kccAR) return;
+      var el = function (id) { return document.getElementById(id); };
+      if (!el("inapp").hidden || !el("nocam").hidden) return;
+      el("loading").hidden = true;
+      el("nocam").hidden = false;
+    }, 20000);
+  </script>
+</body>
+</html>

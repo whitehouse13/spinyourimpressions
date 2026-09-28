@@ -1,0 +1,31 @@
+:root {
+  --paper: #f3ead8; --ink: #2b2118; --accent: #2f6b3a; --muted: #6b5d4c;
+  --overlay: rgba(20, 14, 8, .72); --on-overlay: #fff8ec;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #1c1712; --ink: #f3ead8; --muted: #b9a88f; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--paper); color: var(--ink);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.landing { min-height: 100%; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px; padding: 32px 16px; text-align: center; }
+.landing img { width: 140px; height: auto; border-radius: 50%; }
+.landing h1 { font-size: 1.6rem; margin: 6px 0 0; letter-spacing: .02em; }
+.landing p { margin: 0 0 10px; color: var(--muted); }
+.btn { display: block; width: min(340px, 100%); padding: 14px 18px; border-radius: 999px;
+  border: 2px solid var(--accent); color: var(--accent); background: transparent;
+  font: inherit; font-weight: 600; text-decoration: none; text-align: center; cursor: pointer; }
+.btn.primary { background: var(--accent); color: #fff; }
+.panel { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 24px 16px; text-align: center;
+  background: var(--overlay); color: var(--on-overlay); z-index: 10; }
+.panel[hidden], [hidden] { display: none !important; }
+.panel .btn { border-color: var(--on-overlay); color: var(--on-overlay); }
+.panel .btn.primary { background: var(--on-overlay); color: var(--ink); }
+.hint { position: fixed; left: 16px; right: 16px; bottom: 24px; padding: 10px 14px;
+  border-radius: 12px; background: var(--overlay); color: var(--on-overlay);
+  text-align: center; z-index: 5; pointer-events: none; }
+.card { position: fixed; left: 16px; right: 16px; bottom: 90px; padding: 14px 16px;
+  border-radius: 14px; background: var(--paper); color: var(--ink); z-index: 6; }

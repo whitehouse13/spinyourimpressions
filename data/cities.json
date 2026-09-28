@@ -1,0 +1,89 @@
+{
+ "version": 1,
+ "scene": {
+  "cupRadius": 0.6659202639828258,
+  "rimY": 1.0711297071129706,
+  "cardWidth": 1.112970711297071,
+  "cardHeight": 1.4330543933054394
+ },
+ "variants": [
+  {
+   "id": "kilkenny-A",
+   "city": "Kilkenny",
+   "variant": "A",
+   "ring": "data/kilkenny-A/ring.jpg",
+   "landmarks": [
+    {
+     "name": "Butter Slip",
+     "blurb": "Built in 1616 and lined with butter stalls on market days — its shady steps kept the butter cool, and made the lane famously slippery.",
+     "u": 0.18,
+     "card": "data/kilkenny-A/card-0.png"
+    },
+    {
+     "name": "St Canice's",
+     "blurb": "Begun around 1202, it's Ireland's second-longest cathedral — and it gave the city its name: Cill Chainnigh, the Church of Canice.",
+     "u": 0.66,
+     "card": "data/kilkenny-A/card-1.png"
+    },
+    {
+     "name": "Round Tower",
+     "blurb": "Over 1,000 years old and 30 m tall — climb its 121 steps for the best view in Kilkenny. One of very few round towers in Ireland you can still climb.",
+     "u": 0.9,
+     "card": "data/kilkenny-A/card-2.png"
+    }
+   ]
+  },
+  {
+   "id": "kilkenny-B",
+   "city": "Kilkenny",
+   "variant": "B",
+   "ring": "data/kilkenny-B/ring.jpg",
+   "landmarks": [
+    {
+     "name": "Smithwick's",
+     "blurb": "Franciscan friars brewed ale on this spot in the 1200s. John Smithwick started his brewery here in 1710 — quietly, since Catholics couldn't legally own property.",
+     "u": 0.175,
+     "card": "data/kilkenny-B/card-0.png"
+    },
+    {
+     "name": "St Mary's",
+     "blurb": "Built 1843–1857, right through the Great Famine, and paid for by local people. Its tower rises nearly 60 m over the city.",
+     "u": 0.465,
+     "card": "data/kilkenny-B/card-1.png"
+    },
+    {
+     "name": "Kilkenny Castle",
+     "blurb": "Home of the Butler family for almost 600 years — until 1967, when they sold it to the people of Kilkenny for just £50.",
+     "u": 0.79,
+     "card": "data/kilkenny-B/card-2.png"
+    }
+   ]
+  }
+ ],
+ "targets": [
+  {
+   "variant": "kilkenny-A",
+   "landmark": 0
+  },
+  {
+   "variant": "kilkenny-A",
+   "landmark": 1
+  },
+  {
+   "variant": "kilkenny-A",
+   "landmark": 2
+  },
+  {
+   "variant": "kilkenny-B",
+   "landmark": 0
+  },
+  {
+   "variant": "kilkenny-B",
+   "landmark": 1
+  },
+  {
+   "variant": "kilkenny-B",
+   "landmark": 2
+  }
+ ]
+}
