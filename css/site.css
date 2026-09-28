@@ -23,7 +23,7 @@ body { background: var(--paper); color: var(--ink);
   background: var(--overlay); color: var(--on-overlay); z-index: 10; }
 .panel[hidden], [hidden] { display: none !important; }
 .panel .btn { border-color: var(--on-overlay); color: var(--on-overlay); }
-.panel .btn.primary { background: var(--on-overlay); color: var(--ink); }
+.panel .btn.primary { background: var(--on-overlay); color: #2b2118; }  /* not --ink: it turns light in dark mode */
 .hint { position: fixed; left: 16px; right: 16px; bottom: 24px; padding: 10px 14px;
   border-radius: 12px; background: var(--overlay); color: var(--on-overlay);
   text-align: center; z-index: 5; pointer-events: none; }

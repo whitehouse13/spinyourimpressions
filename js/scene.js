@@ -3,9 +3,13 @@
 // cup: theta = 2π·u, measured from +z towards +x (same as CylinderGeometry),
 // so the panorama reads left→right from outside.
 import * as THREE from "three";
-import { timeline, orderFrom, ease } from "./timeline.js?v=96a885b366";
+import { timeline, orderFrom, ease } from "./timeline.js?v=131d05528a";
 
-export function buildCupScene(sp, variant, tex) {
+// Direction the cards orbit and the ring spins. -1 = clockwise seen from
+// above; the first phone test (2026-09-28) found +1 ran the "wrong way".
+const SPIN_DIR = -1;
+
+export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
   const root = new THREE.Group();
   const cup = new THREE.Group();
   cup.position.set(0, 0, -sp.cupRadius);          // cup axis behind the surface
@@ -31,11 +35,16 @@ export function buildCupScene(sp, variant, tex) {
     return m;
   });
 
-  // The ring texture is the whole panorama band, wrapped once around the ring:
-  // size its height from the texture's aspect so it isn't stretched sideways.
-  const ringR = sp.cupRadius * 1.35;
+  // The ring shows the panorama band twice around (keeps the band low while
+  // its proportions stay unstretched), hugging the cup just above the rim.
+  const RING_REPEAT = 2;
+  const ringR = sp.cupRadius * 1.12;
   const img = tex.ring.image;
-  const ringH = img && img.width > 0 ? 2 * Math.PI * ringR * (img.height / img.width) : ch * 0.9;
+  tex.ring.wrapS = THREE.RepeatWrapping;
+  tex.ring.repeat.set(RING_REPEAT, 1);
+  tex.ring.needsUpdate = true;
+  const ringH = img && img.width > 0
+    ? 2 * Math.PI * ringR * (img.height / img.width) / RING_REPEAT : ch * 0.9;
   const ring = new THREE.Mesh(
     new THREE.CylinderGeometry(ringR, ringR, ringH, 96, 1, true),
     new THREE.MeshBasicMaterial({ map: tex.ring, transparent: true, opacity: 0,
@@ -43,6 +52,17 @@ export function buildCupScene(sp, variant, tex) {
   ring.position.y = sp.rimY + ringH / 2 + 0.05;
   ring.visible = false;
   spin.add(ring);
+
+  if (debug) {
+    // ?debug guide: where the scene thinks the cup and the tracked target are.
+    const line = new THREE.LineBasicMaterial({ color: 0x00ff66 });
+    const cyl = new THREE.LineSegments(new THREE.EdgesGeometry(
+      new THREE.CylinderGeometry(sp.cupRadius, sp.cupRadius, sp.rimY * 2, 24, 1, true)), line);
+    cup.add(cyl);                                   // centred on the target's height, top at the rim
+    const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1)),
+      new THREE.LineBasicMaterial({ color: 0xff3366 }));
+    root.add(box);                                  // the tracked target, 1×1 target widths
+  }
 
   let first = 0;
   return {
@@ -60,10 +80,10 @@ export function buildCupScene(sp, variant, tex) {
         m.material.opacity = r;
         m.position.z = sp.cupRadius * (1.05 + 0.45 * ease(s.orbitT));
       });
-      orbit.rotation.y = s.orbitAngle;
+      orbit.rotation.y = SPIN_DIR * s.orbitAngle;
       ring.visible = s.merge > 0;
       ring.material.opacity = s.merge;
-      ring.rotation.y = s.orbitAngle + s.ringSpin;   // pick up where the cards' orbit left off
+      ring.rotation.y = SPIN_DIR * (s.orbitAngle + s.ringSpin);   // pick up where the cards' orbit left off
     },
   };
 }
