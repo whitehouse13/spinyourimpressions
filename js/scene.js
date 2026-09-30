@@ -6,13 +6,13 @@
 // 2026-09-28 phone test: separate landmark cards read as confusing, so the
 // scene is just the panorama ring — it rises out of the rim and spins.
 import * as THREE from "three";
-import { ease } from "./timeline.js?v=dc80648b1c";
+import { ease } from "./timeline.js?v=fce73a096d";
 
 // Direction the ring spins. -1 = clockwise seen from above; the first phone
 // test found +1 ran the "wrong way".
 const SPIN_DIR = -1;
 const RISE = 1.4;        // s, ring grows up out of the rim
-const SPIN = 0.35;       // rad/s
+const SPIN = 0.22;       // rad/s — slowed 2026-09-30 so captions can be read
 const DONE_AT = 4.0;     // s, when the finale buttons appear
 
 export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
@@ -51,9 +51,30 @@ export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
     root.add(box);                                  // the tracked target, 1×1 target widths
   }
 
+  // Which landmark a ring position shows: the ring wraps the panorama
+  // RING_REPEAT times, so ring u → panorama u = frac(u · RING_REPEAT).
+  function nearestLandmark(panoU) {
+    let best = 0, bestD = Infinity;
+    variant.landmarks.forEach((l, i) => {
+      const d = Math.min(Math.abs(l.u - panoU), 1 - Math.abs(l.u - panoU));
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+  const panoAt = (ringU) => (((ringU * RING_REPEAT) % 1) + 1) % 1;
+
   return {
     root,
+    ring,
     cards: [],                                      // no tappable cards any more
+    isRisen(t) { return t >= RISE; },
+    // Landmark on the side of the ring facing the camera (root is kept upright
+    // and camera-facing, so that's the ring's +z side, CylinderGeometry u=0).
+    frontIndex() {
+      const phi = spin.rotation.y + ring.rotation.y;
+      return nearestLandmark(panoAt(((-phi / (2 * Math.PI)) % 1 + 1) % 1));
+    },
+    landmarkAtUV(uv) { return nearestLandmark(panoAt(uv.x)); },
     setTracked(i) { spin.rotation.y = -2 * Math.PI * variant.landmarks[i].u; },
     setFirst() {},
     isDone(t) { return t >= DONE_AT; },

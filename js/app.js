@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=dc80648b1c";
-import { SceneClock } from "./timeline.js?v=dc80648b1c";
-import { buildCupScene } from "./scene.js?v=dc80648b1c";
-import { capturePhoto, sharePhoto } from "./capture.js?v=dc80648b1c";
-import { kickCameraVideo } from "./camera-kick.js?v=dc80648b1c";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=fce73a096d";
+import { SceneClock } from "./timeline.js?v=fce73a096d";
+import { buildCupScene } from "./scene.js?v=fce73a096d";
+import { capturePhoto, sharePhoto } from "./capture.js?v=fce73a096d";
+import { kickCameraVideo } from "./camera-kick.js?v=fce73a096d";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -229,15 +229,36 @@ async function main() {
     const r = renderer.domElement.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects(active.cup.cards.filter((c) => c.visible))[0];
-    if (!hit) return setHidden("info", true);
-    const lm = active.v.landmarks[hit.object.userData.index];
-    $("info-name").textContent = lm.name;
-    $("info-blurb").textContent = lm.blurb;
-    setHidden("info", false);
+    const hit = active.cup.ring.visible ? ray.intersectObject(active.cup.ring)[0] : null;
+    if (!hit || !hit.uv) return;
+    showCaption(active.cup.landmarkAtUV(hit.uv));  // tap a landmark → keep its caption a while
+    captionPinnedUntil = performance.now() + CAPTION_PIN_MS;
   });
 
   $("replay-btn").onclick = () => { clock.reset(); clock.running = true; };
+
+  // Captions: name + one-line fact of the landmark at the front of the ring,
+  // changing as the ring turns (tap-to-pin above).
+  const CAPTION_PIN_MS = 5000;
+  let captionIdx = -1;
+  let captionPinnedUntil = 0;
+  function showCaption(i) {
+    const lm = active.v.landmarks[i];
+    $("info-name").textContent = lm.name;
+    $("info-blurb").textContent = lm.blurb;
+    setHidden("info", false);
+    captionIdx = i;
+  }
+  function updateCaption() {
+    const visible = active && (trackedAnchor ? follow.visible : true) && active.cup.isRisen(clock.t);
+    if (!visible) {
+      if (captionIdx !== -1) { setHidden("info", true); captionIdx = -1; }
+      return;
+    }
+    if (performance.now() < captionPinnedUntil) return;
+    const i = active.cup.frontIndex();
+    if (i !== captionIdx) showCaption(i);
+  }
 
   let photo = null;
   let previewURL = null;
@@ -296,6 +317,7 @@ async function main() {
     updateFollow();
     if (active) {
       active.cup.update(clock.t);
+      updateCaption();
       setHidden("finale", !active.cup.isDone(clock.t));
     }
     renderer.render(scene, camera);

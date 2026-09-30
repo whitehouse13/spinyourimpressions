@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Bring your cup to life</title>
-  <link rel="stylesheet" href="css/site.css?v=dc80648b1c">
+  <link rel="stylesheet" href="css/site.css?v=fce73a096d">
   <style>
     html, body { background: #000; overflow: hidden; }
     #stage { position: fixed; inset: 0; }
@@ -20,9 +20,12 @@
     .hint { top: 16px; bottom: auto; }
     #no-cup.glass { background: rgba(0,0,0,.35); color: #fff; border-color: rgba(255,255,255,.8);
       -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    /* Landmark captions under the top hints, see-through like the buttons. */
+    #info { top: 70px; bottom: auto; background: rgba(243,234,216,.88);
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); pointer-events: none; }
     #picker .list { display: flex; flex-direction: column; gap: 10px; width: min(340px, 100%); }
   </style>
-  <script src="js/debug.js?v=dc80648b1c"></script>
+  <script src="js/debug.js?v=fce73a096d"></script>
   <script type="importmap">
   { "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -87,7 +90,7 @@
     <button class="btn" id="preview-close">Close</button>
   </div>
 
-  <script type="module" src="js/app.js?v=dc80648b1c"></script>
+  <script type="module" src="js/app.js?v=fce73a096d"></script>
   <script>
     // Watchdog (plain script, runs even where modules don't): if app.js never
     // evaluated — CDN blocked, no import-map support — nothing else can take
