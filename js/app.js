@@ -1,16 +1,19 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=f5f2a13b34";
-import { SceneClock } from "./timeline.js?v=f5f2a13b34";
-import { buildCupScene } from "./scene.js?v=f5f2a13b34";
-import { capturePhoto, sharePhoto } from "./capture.js?v=f5f2a13b34";
-import { kickCameraVideo } from "./camera-kick.js?v=f5f2a13b34";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=dc80648b1c";
+import { SceneClock } from "./timeline.js?v=dc80648b1c";
+import { buildCupScene } from "./scene.js?v=dc80648b1c";
+import { capturePhoto, sharePhoto } from "./capture.js?v=dc80648b1c";
+import { kickCameraVideo } from "./camera-kick.js?v=dc80648b1c";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
 window.kccBoot = true;
 
-const PICKER_AFTER_MS = 5000;
+// People who come from social media without a cup can still try the scene,
+// but people with a cup shouldn't be interrupted: after a while only a small
+// "No cup?" link appears; the full picker opens when it's tapped.
+const NO_CUP_LINK_AFTER_MS = 12000;
 const $ = (id) => document.getElementById(id);
 const setHidden = (id, h) => { $(id).hidden = h; };
 // Build version from our own module URL (js/app.js?v=<hex hash>, stamped by
@@ -102,6 +105,7 @@ async function main() {
     clock.running = true;
     setHidden("scanning", true);
     setHidden("picker", true);
+    setHidden("no-cup", true);
     setHidden("hud-buttons", false);
   }
 
@@ -212,10 +216,8 @@ async function main() {
     }));
     setHidden("picker", false);
   }
-  $("picker-retry").onclick = () => {
-    setHidden("picker", true);
-    pickerTimer = setTimeout(() => { if (!active) openPicker(); }, PICKER_AFTER_MS);
-  };
+  $("picker-retry").onclick = () => setHidden("picker", true);
+  $("no-cup").onclick = () => { setHidden("no-cup", true); openPicker(); };
 
   // Tap a card → name + blurb.
   const ray = new THREE.Raycaster();
@@ -284,7 +286,7 @@ async function main() {
   }
   setHidden("loading", true);
   setHidden("scanning", false);
-  pickerTimer = setTimeout(() => { if (!active) openPicker(); }, PICKER_AFTER_MS);
+  pickerTimer = setTimeout(() => { if (!active) setHidden("no-cup", false); }, NO_CUP_LINK_AFTER_MS);
 
   let last = performance.now();
   renderer.setAnimationLoop(() => {

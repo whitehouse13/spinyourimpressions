@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Bring your cup to life</title>
-  <link rel="stylesheet" href="css/site.css?v=f5f2a13b34">
+  <link rel="stylesheet" href="css/site.css?v=dc80648b1c">
   <style>
     html, body { background: #000; overflow: hidden; }
     #stage { position: fixed; inset: 0; }
@@ -16,9 +16,13 @@
     /* See-through finale buttons so the AR scene stays visible behind them. */
     .panel .btn.glass { background: rgba(0,0,0,.22); color: #fff; border-color: rgba(255,255,255,.8);
       -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+    /* Hints sit at the top: the bottom belongs to the finale buttons. */
+    .hint { top: 16px; bottom: auto; }
+    #no-cup.glass { background: rgba(0,0,0,.35); color: #fff; border-color: rgba(255,255,255,.8);
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
     #picker .list { display: flex; flex-direction: column; gap: 10px; width: min(340px, 100%); }
   </style>
-  <script src="js/debug.js?v=f5f2a13b34"></script>
+  <script src="js/debug.js?v=dc80648b1c"></script>
   <script type="importmap">
   { "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -47,6 +51,8 @@
   </div>
 
   <p id="scanning" class="hint" hidden>Open the gates and point at the cup</p>
+  <button id="no-cup" class="btn glass" hidden
+    style="position:fixed;left:50%;transform:translateX(-50%);bottom:28px;width:auto;padding:10px 18px;z-index:6">No cup with you? Try it here →</button>
   <p id="lost" class="hint" hidden>Point back at the cup</p>
   <p id="photo-error" class="hint" hidden>Couldn't take the photo — try again.</p>
   <p id="loading-city" class="hint" hidden>Loading the city…</p>
@@ -81,7 +87,7 @@
     <button class="btn" id="preview-close">Close</button>
   </div>
 
-  <script type="module" src="js/app.js?v=f5f2a13b34"></script>
+  <script type="module" src="js/app.js?v=dc80648b1c"></script>
   <script>
     // Watchdog (plain script, runs even where modules don't): if app.js never
     // evaluated — CDN blocked, no import-map support — nothing else can take
