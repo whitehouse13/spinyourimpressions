@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=615094819f";
-import { SceneClock } from "./timeline.js?v=615094819f";
-import { buildCupScene } from "./scene.js?v=615094819f";
-import { capturePhoto, sharePhoto } from "./capture.js?v=615094819f";
-import { kickCameraVideo } from "./camera-kick.js?v=615094819f";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=1c1a0f09b6";
+import { SceneClock } from "./timeline.js?v=1c1a0f09b6";
+import { buildCupScene } from "./scene.js?v=1c1a0f09b6";
+import { capturePhoto, sharePhoto } from "./capture.js?v=1c1a0f09b6";
+import { kickCameraVideo } from "./camera-kick.js?v=1c1a0f09b6";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -250,7 +250,8 @@ async function main() {
     captionIdx = i;
   }
   function updateCaption() {
-    const visible = active && (trackedAnchor ? follow.visible : true) && active.cup.isRisen(clock.t);
+    const visible = active && (trackedAnchor ? follow.visible : true) && active.cup.isRisen(clock.t)
+      && $("preview").hidden;                     // don't show through the photo preview
     if (!visible) {
       if (captionIdx !== -1) { setHidden("info", true); captionIdx = -1; }
       return;
@@ -267,7 +268,9 @@ async function main() {
     if (btn.disabled) return;               // re-entrancy guard: ignore rapid double-clicks
     btn.disabled = true;
     try {
-      photo = await capturePhoto({ video: mindar.video, renderer, scene, camera, container: $("stage") });
+      const caption = $("info").hidden ? null
+        : { name: $("info-name").textContent, blurb: $("info-blurb").textContent };
+      photo = await capturePhoto({ video: mindar.video, renderer, scene, camera, container: $("stage"), caption });
       if (previewURL) URL.revokeObjectURL(previewURL);   // drop the previous preview's URL, if any
       previewURL = URL.createObjectURL(photo);
       $("preview-img").src = previewURL;
