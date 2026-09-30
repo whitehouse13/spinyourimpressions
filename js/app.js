@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=dac47f7553";
-import { SceneClock } from "./timeline.js?v=dac47f7553";
-import { buildCupScene } from "./scene.js?v=dac47f7553";
-import { capturePhoto, sharePhoto } from "./capture.js?v=dac47f7553";
-import { kickCameraVideo } from "./camera-kick.js?v=dac47f7553";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=d542b9146f";
+import { SceneClock } from "./timeline.js?v=d542b9146f";
+import { buildCupScene } from "./scene.js?v=d542b9146f";
+import { capturePhoto, sharePhoto } from "./capture.js?v=d542b9146f";
+import { kickCameraVideo } from "./camera-kick.js?v=d542b9146f";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -110,6 +110,33 @@ async function main() {
   const LOST_HINT_AFTER_MS = 1500;
   let lostTimer = null;
 
+  // Tracked placement takes only the cup's POSITION from MindAR; the ring stays
+  // upright to the screen. Phone test 2026-09-30: MindAR's rotation for our
+  // strongly curved target tilted/shifted and jittered the ring, while the
+  // untracked picker mode (no rotation) looked level. Smoothed, and kept in
+  // place through short tracking losses instead of vanishing.
+  const FOLLOW_SMOOTH = 0.25;
+  const follow = new THREE.Group();
+  follow.visible = false;
+  scene.add(follow);
+  let trackedAnchor = null;
+  let placed = false;
+  const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
+  function updateFollow() {
+    if (!trackedAnchor || !trackedAnchor.group.visible) return;
+    trackedAnchor.group.updateMatrixWorld(true);
+    trackedAnchor.group.matrixWorld.decompose(_p, _q, _s);
+    if (!placed) {
+      follow.position.copy(_p);
+      follow.scale.setScalar(_s.x);
+      placed = true;
+    } else {
+      follow.position.lerp(_p, FOLLOW_SMOOTH);
+      follow.scale.setScalar(follow.scale.x + (_s.x - follow.scale.x) * FOLLOW_SMOOTH);
+    }
+    follow.visible = true;
+  }
+
   manifest.targets.forEach((tg, i) => {
     const anchor = mindar.addAnchor(i);
     anchor.onTargetFound = async () => {
@@ -123,7 +150,9 @@ async function main() {
         return flashError("load-error", 4000);   // next detection retries the load
       }
       if (active !== entry) start(entry, tg.landmark);
-      anchor.group.add(entry.cup.root);             // follow whichever landmark is in the window
+      if (trackedAnchor !== anchor) placed = false;  // snap to a newly found landmark
+      trackedAnchor = anchor;                       // follow whichever landmark is in the window
+      follow.add(entry.cup.root);
       entry.cup.setTracked(tg.landmark);
       // The target may have been lost while the textures loaded — onTargetLost
       // then fired before root was parented here and did nothing. Use the
@@ -132,11 +161,12 @@ async function main() {
       setHidden("lost", anchor.visible);
     };
     anchor.onTargetLost = () => {
-      if (!(active && active.cup.root.parent === anchor.group)) return;
+      if (!(active && trackedAnchor === anchor)) return;
       clearTimeout(lostTimer);
       lostTimer = setTimeout(() => {
         if (anchor.visible) return;
         clock.running = false;
+        follow.visible = false;
         setHidden("lost", false);
       }, LOST_HINT_AFTER_MS);
     };
@@ -169,6 +199,7 @@ async function main() {
           const entry = await withCityLoading(entryFor(v.id));
           start(entry, 0);
           entry.cup.setTracked(0);
+          trackedAnchor = null;
           free.add(entry.cup.root);
         } catch (err) {
           console.error(err);
@@ -260,6 +291,7 @@ async function main() {
     const now = performance.now();
     clock.tick((now - last) / 1000);
     last = now;
+    updateFollow();
     if (active) {
       active.cup.update(clock.t);
       setHidden("finale", !active.cup.isDone(clock.t));

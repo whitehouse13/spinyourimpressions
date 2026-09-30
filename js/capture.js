@@ -1,4 +1,4 @@
-import { canShareFiles } from "./env.js?v=dac47f7553";
+import { canShareFiles } from "./env.js?v=d542b9146f";
 
 export const STAMP = "@spin.your.impressions · spinyourimpressions.ie";
 
