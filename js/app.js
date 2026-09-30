@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=fce73a096d";
-import { SceneClock } from "./timeline.js?v=fce73a096d";
-import { buildCupScene } from "./scene.js?v=fce73a096d";
-import { capturePhoto, sharePhoto } from "./capture.js?v=fce73a096d";
-import { kickCameraVideo } from "./camera-kick.js?v=fce73a096d";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=916d0b12eb";
+import { SceneClock } from "./timeline.js?v=916d0b12eb";
+import { buildCupScene } from "./scene.js?v=916d0b12eb";
+import { capturePhoto, sharePhoto } from "./capture.js?v=916d0b12eb";
+import { kickCameraVideo } from "./camera-kick.js?v=916d0b12eb";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
