@@ -6,7 +6,7 @@
 // 2026-09-28 phone test: separate landmark cards read as confusing, so the
 // scene is just the panorama ring — it rises out of the rim and spins.
 import * as THREE from "three";
-import { ease } from "./timeline.js?v=d542b9146f";
+import { ease } from "./timeline.js?v=f5f2a13b34";
 
 // Direction the ring spins. -1 = clockwise seen from above; the first phone
 // test found +1 ran the "wrong way".

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Bring your cup to life</title>
-  <link rel="stylesheet" href="css/site.css?v=d542b9146f">
+  <link rel="stylesheet" href="css/site.css?v=f5f2a13b34">
   <style>
     html, body { background: #000; overflow: hidden; }
     #stage { position: fixed; inset: 0; }
@@ -13,9 +13,12 @@
     #hud-buttons .btn { width: auto; padding: 10px 14px; background: var(--overlay);
       color: var(--on-overlay); border-color: var(--on-overlay); }
     #preview img { max-width: 100%; max-height: 60vh; border-radius: 12px; }
+    /* See-through finale buttons so the AR scene stays visible behind them. */
+    .panel .btn.glass { background: rgba(0,0,0,.22); color: #fff; border-color: rgba(255,255,255,.8);
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); text-shadow: 0 1px 3px rgba(0,0,0,.5); }
     #picker .list { display: flex; flex-direction: column; gap: 10px; width: min(340px, 100%); }
   </style>
-  <script src="js/debug.js?v=d542b9146f"></script>
+  <script src="js/debug.js?v=f5f2a13b34"></script>
   <script type="importmap">
   { "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -65,10 +68,10 @@
   <div id="finale" class="panel" hidden style="background:transparent;justify-content:flex-end;pointer-events:none">
     <h2 style="text-shadow:0 2px 8px #000">Spin Your Impressions</h2>
     <div style="display:flex;gap:10px;width:min(340px,100%);pointer-events:auto">
-      <button class="btn" id="photo-btn" style="width:auto;flex:1;background:var(--overlay)">📸 Photo</button>
-      <button class="btn primary" id="replay-btn" style="width:auto;flex:1">↻ Replay</button>
+      <button class="btn glass" id="replay-btn" style="width:auto;flex:1">↻ Replay</button>
+      <button class="btn glass" id="photo-btn" style="width:auto;flex:1">📸 Photo</button>
     </div>
-    <a class="btn" style="pointer-events:auto;background:var(--overlay)"
+    <a class="btn glass" style="pointer-events:auto"
        href="https://www.instagram.com/spin.your.impressions/">Follow @spin.your.impressions</a>
   </div>
 
@@ -78,7 +81,7 @@
     <button class="btn" id="preview-close">Close</button>
   </div>
 
-  <script type="module" src="js/app.js?v=d542b9146f"></script>
+  <script type="module" src="js/app.js?v=f5f2a13b34"></script>
   <script>
     // Watchdog (plain script, runs even where modules don't): if app.js never
     // evaluated — CDN blocked, no import-map support — nothing else can take
