@@ -5,16 +5,30 @@
   if (!/[?&]debug\b/.test(location.search)) return;
   var t0 = performance.now();
   var box = document.createElement("pre");
-  box.style.cssText = "position:fixed;left:0;right:0;top:0;max-height:45vh;overflow:auto;" +
-    "margin:0;padding:6px 8px;font:11px/1.35 ui-monospace,Menlo,monospace;color:#0f0;" +
-    "background:rgba(0,0,0,.8);z-index:99;white-space:pre-wrap;pointer-events:auto";
+  // Collapsed by default to one line at the bottom-left so it never covers the
+  // page's buttons; tap the 🐞 chip to expand/collapse the full log.
+  box.style.cssText = "position:fixed;left:0;right:0;bottom:0;max-height:1.5em;overflow:hidden;" +
+    "margin:0;padding:4px 8px 4px 34px;font:10px/1.35 ui-monospace,Menlo,monospace;color:#0f0;" +
+    "background:rgba(0,0,0,.55);z-index:99;white-space:pre-wrap;pointer-events:none";
+  var chip = document.createElement("button");
+  chip.textContent = "🐞";
+  chip.style.cssText = "position:fixed;left:4px;bottom:2px;z-index:100;font-size:14px;" +
+    "background:none;border:0;padding:0;pointer-events:auto";
+  var open = false;
+  chip.onclick = function () {
+    open = !open;
+    box.style.maxHeight = open ? "45vh" : "1.5em";
+    box.style.overflow = open ? "auto" : "hidden";
+    box.style.background = open ? "rgba(0,0,0,.8)" : "rgba(0,0,0,.55)";
+    box.scrollTop = box.scrollHeight;
+  };
   function log(msg) {
     var line = ((performance.now() - t0) / 1000).toFixed(1) + "s " + msg;
     box.textContent += line + "\n";
     box.scrollTop = box.scrollHeight;
   }
   window.kccDebug = log;
-  document.addEventListener("DOMContentLoaded", function () { document.body.appendChild(box); });
+  document.addEventListener("DOMContentLoaded", function () { document.body.appendChild(box); document.body.appendChild(chip); });
   log("UA " + navigator.userAgent);
   log("secure=" + window.isSecureContext + " mediaDevices=" + !!navigator.mediaDevices +
       " importmap=" + !!(HTMLScriptElement.supports && HTMLScriptElement.supports("importmap")));

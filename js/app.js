@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=7959765d80";
-import { SceneClock } from "./timeline.js?v=7959765d80";
-import { buildCupScene } from "./scene.js?v=7959765d80";
-import { capturePhoto, sharePhoto } from "./capture.js?v=7959765d80";
-import { kickCameraVideo } from "./camera-kick.js?v=7959765d80";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=004a11f9bd";
+import { SceneClock } from "./timeline.js?v=004a11f9bd";
+import { buildCupScene } from "./scene.js?v=004a11f9bd";
+import { capturePhoto, sharePhoto } from "./capture.js?v=004a11f9bd";
+import { kickCameraVideo } from "./camera-kick.js?v=004a11f9bd";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -37,7 +37,7 @@ async function main() {
     // Steadier pose on a hand-held curved cup (phone test showed heavy
     // jitter and lost/found flicker): stronger One-Euro smoothing, and ride
     // out short tracking drop-outs instead of pausing on every missed frame.
-    filterMinCF: 0.0001, filterBeta: 0.001, missTolerance: 10,
+    filterMinCF: 0.0001, filterBeta: 0.001, missTolerance: 20,
   });
   const { renderer, scene, camera } = mindar;
   kickCameraVideo($("stage"), {
@@ -105,10 +105,16 @@ async function main() {
     setHidden("hud-buttons", false);
   }
 
+  // Hand-held cups lose tracking for a moment all the time (phone test
+  // 2026-09-30: lost/found every 1–8 s). Only pause and nag after a real loss.
+  const LOST_HINT_AFTER_MS = 1500;
+  let lostTimer = null;
+
   manifest.targets.forEach((tg, i) => {
     const anchor = mindar.addAnchor(i);
     anchor.onTargetFound = async () => {
       clearTimeout(pickerTimer);
+      clearTimeout(lostTimer);
       let entry;
       try {
         entry = await withCityLoading(entryFor(tg.variant));
@@ -126,10 +132,13 @@ async function main() {
       setHidden("lost", anchor.visible);
     };
     anchor.onTargetLost = () => {
-      if (active && active.cup.root.parent === anchor.group) {
+      if (!(active && active.cup.root.parent === anchor.group)) return;
+      clearTimeout(lostTimer);
+      lostTimer = setTimeout(() => {
+        if (anchor.visible) return;
         clock.running = false;
         setHidden("lost", false);
-      }
+      }, LOST_HINT_AFTER_MS);
     };
   });
 
