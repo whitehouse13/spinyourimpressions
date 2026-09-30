@@ -11,6 +11,7 @@
    "id": "kilkenny-A",
    "city": "Kilkenny",
    "variant": "A",
+   "title": "Butter Slip",
    "ring": "data/kilkenny-A/ring.jpg",
    "landmarks": [
     {
@@ -37,6 +38,7 @@
    "id": "kilkenny-B",
    "city": "Kilkenny",
    "variant": "B",
+   "title": "Castle",
    "ring": "data/kilkenny-B/ring.jpg",
    "landmarks": [
     {

@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=004a11f9bd";
-import { SceneClock } from "./timeline.js?v=004a11f9bd";
-import { buildCupScene } from "./scene.js?v=004a11f9bd";
-import { capturePhoto, sharePhoto } from "./capture.js?v=004a11f9bd";
-import { kickCameraVideo } from "./camera-kick.js?v=004a11f9bd";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=dac47f7553";
+import { SceneClock } from "./timeline.js?v=dac47f7553";
+import { buildCupScene } from "./scene.js?v=dac47f7553";
+import { capturePhoto, sharePhoto } from "./capture.js?v=dac47f7553";
+import { kickCameraVideo } from "./camera-kick.js?v=dac47f7553";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -157,7 +157,11 @@ async function main() {
     list.replaceChildren(...manifest.variants.map((v) => {
       const b = document.createElement("button");
       b.className = "btn primary";
-      b.textContent = `${v.city} — ${v.variant}`;
+      b.textContent = `${v.city} — ${v.title || v.variant}`;
+      const sub = document.createElement("small");
+      sub.style.cssText = "display:block;font-weight:400;opacity:.7;margin-top:2px";
+      sub.textContent = v.landmarks.map((l) => l.name).join(" · ");
+      b.appendChild(sub);
       b.onclick = async () => {
         if (b.disabled) return;
         b.disabled = true;
