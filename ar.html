@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Bring your cup to life</title>
-  <link rel="stylesheet" href="css/site.css?v=1c1a0f09b6">
+  <link rel="stylesheet" href="css/site.css?v=393fd2bbe5">
   <style>
     html, body { background: #000; overflow: hidden; }
     #stage { position: fixed; inset: 0; }
@@ -31,7 +31,7 @@
     #info b { font-size: 14px; }
     #picker .list { display: flex; flex-direction: column; gap: 10px; width: min(340px, 100%); }
   </style>
-  <script src="js/debug.js?v=1c1a0f09b6"></script>
+  <script src="js/debug.js?v=393fd2bbe5"></script>
   <script type="importmap">
   { "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -86,8 +86,12 @@
       <button class="btn glass" id="replay-btn" style="width:auto;flex:1">↻ Replay</button>
       <button class="btn glass" id="photo-btn" style="width:auto;flex:1">📸 Photo</button>
     </div>
-    <a class="btn glass" style="pointer-events:auto"
-       href="https://www.instagram.com/spin.your.impressions/">Follow @spin.your.impressions</a>
+    <div style="display:flex;gap:10px;width:min(340px,100%);pointer-events:auto">
+      <a class="btn glass" style="width:auto;flex:1" rel="noopener"
+         href="https://www.instagram.com/spin.your.impressions/">Instagram</a>
+      <a class="btn glass" style="width:auto;flex:1" rel="noopener"
+         href="https://www.tiktok.com/@spin.your.impressions">TikTok</a>
+    </div>
   </div>
 
   <div id="preview" class="panel" hidden>
@@ -96,7 +100,7 @@
     <button class="btn" id="preview-close">Close</button>
   </div>
 
-  <script type="module" src="js/app.js?v=1c1a0f09b6"></script>
+  <script type="module" src="js/app.js?v=393fd2bbe5"></script>
   <script>
     // Watchdog (plain script, runs even where modules don't): if app.js never
     // evaluated — CDN blocked, no import-map support — nothing else can take
