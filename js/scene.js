@@ -6,7 +6,7 @@
 // 2026-09-28 phone test: separate landmark cards read as confusing, so the
 // scene is just the panorama ring — it rises out of the rim and spins.
 import * as THREE from "three";
-import { ease } from "./timeline.js?v=393fd2bbe5";
+import { ease } from "./timeline.js?v=c1c0908248";
 
 // Direction the ring spins. -1 = clockwise seen from above; the first phone
 // test found +1 ran the "wrong way".
@@ -14,6 +14,10 @@ const SPIN_DIR = -1;
 const RISE = 1.4;        // s, ring grows up out of the rim
 const SPIN = 0.22;       // rad/s — slowed 2026-09-30 so captions can be read
 const DONE_AT = 4.0;     // s, when the finale buttons appear
+// Gap between the cup rim and the ring's bottom edge, in target widths
+// (cup diameter ≈ 1.3). Was 0.05 — phone test 2026-10-04: the ring sat right
+// on the rim; ~2 cm of air reads better.
+const RING_GAP = 0.3;
 
 export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
   const root = new THREE.Group();
@@ -37,7 +41,7 @@ export function buildCupScene(sp, variant, tex, { debug = false } = {}) {
   geo.translate(0, ringH / 2, 0);                  // pivot at the ring's bottom edge
   const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
     map: tex.ring, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
-  ring.position.y = sp.rimY + 0.05;
+  ring.position.y = sp.rimY + RING_GAP;
   spin.add(ring);
 
   if (debug) {
