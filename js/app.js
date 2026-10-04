@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=c1c0908248";
-import { SceneClock } from "./timeline.js?v=c1c0908248";
-import { buildCupScene } from "./scene.js?v=c1c0908248";
-import { capturePhoto, sharePhoto } from "./capture.js?v=c1c0908248";
-import { kickCameraVideo } from "./camera-kick.js?v=c1c0908248";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=e4815487b3";
+import { SceneClock } from "./timeline.js?v=e4815487b3";
+import { buildCupScene } from "./scene.js?v=e4815487b3";
+import { capturePhoto, sharePhoto } from "./capture.js?v=e4815487b3";
+import { kickCameraVideo } from "./camera-kick.js?v=e4815487b3";
+import { findWindowSpan } from "./window-span.js?v=e4815487b3";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -126,16 +127,74 @@ async function main() {
   let trackedAnchor = null;
   let placed = false;
   const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
+  const _goal = new THREE.Vector3(), _ndc = new THREE.Vector3();
+
+  // The tracked crop is centred on a landmark, so when the inner layer is
+  // turned off-centre the ring followed the landmark, not the cup (phone tests
+  // 2026-10-03/04; MindAR's yaw on the curved target proved unusable). Find
+  // the die-cut window's edges in the camera frame instead and shift the ring
+  // sideways to the window centre. No finding → back to the anchor position.
+  const WINDOW_EVERY_MS = 150;
+  const WINDOW_HOLD_MS = 1000;        // keep a good finding through brief misses
+  const WINDOW_SMOOTH = 0.2;
+  const STRIP_MAX_W = 240;            // canvas px; enough for the edges, cheap to scan
+  const sp = manifest.scene;
+  const winChord = 2 * sp.cupRadius * Math.sin(sp.cardWidth / sp.cupRadius / 2);  // target widths
+  const stripCanvas = document.createElement("canvas");
+  const stripCtx = stripCanvas.getContext("2d", { willReadFrequently: true });
+  const windowFix = { dx: 0, goal: 0, span: null, at: 0, lastGood: -Infinity };
+  function windowShift(p, s) {
+    const video = mindar.video, box = $("stage");
+    if (!video || !video.videoWidth || video.readyState < 2) return null;
+    const cw = box.clientWidth, ch = box.clientHeight;
+    const L = parseFloat(video.style.left) || 0, T = parseFloat(video.style.top) || 0;
+    const vw = parseFloat(video.style.width) || cw, vh = parseFloat(video.style.height) || ch;
+    const toVx = video.videoWidth / vw, toVy = video.videoHeight / vh;
+    _ndc.copy(p).project(camera);
+    const cx = (_ndc.x + 1) / 2 * cw, cy = (1 - _ndc.y) / 2 * ch;   // container px
+    const k = (ch / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / -p.z;  // px per world unit
+    const expectC = winChord * s * k;
+    const halfRowsC = 0.3 * s * k;
+    // Strip in video pixels: ±1.1 expected widths around the target centre.
+    const sx = Math.max(0, Math.round((cx - 1.1 * expectC - L) * toVx));
+    const ex = Math.min(video.videoWidth, Math.round((cx + 1.1 * expectC - L) * toVx));
+    const sy = Math.max(0, Math.round((cy - halfRowsC - T) * toVy));
+    const ey = Math.min(video.videoHeight, Math.round((cy + halfRowsC - T) * toVy));
+    if (ex - sx < 20 || ey - sy < 4) return null;
+    const scale = Math.min(1, STRIP_MAX_W / (ex - sx));
+    const w = Math.max(1, Math.round((ex - sx) * scale)), h = Math.max(2, Math.round((ey - sy) * scale));
+    stripCanvas.width = w; stripCanvas.height = h;
+    try {
+      stripCtx.drawImage(video, sx, sy, ex - sx, ey - sy, 0, 0, w, h);
+    } catch { return null; }
+    const px = stripCtx.getImageData(0, 0, w, h).data;
+    const toStrip = (xc) => ((xc - L) * toVx - sx) * scale;          // container px → strip px
+    const span = findWindowSpan(px, w, h, toStrip(cx), expectC * toVx * scale);
+    windowFix.span = span;
+    if (!span) return null;
+    const midC = ((span.x0 + span.x1) / 2 / scale + sx) / toVx + L;  // strip px → container px
+    return (midC - cx) / k;                                          // world units
+  }
+
   function updateFollow() {
     if (!trackedAnchor || !trackedAnchor.group.visible) return;
     trackedAnchor.group.updateMatrixWorld(true);
     trackedAnchor.group.matrixWorld.decompose(_p, _q, _s);
+    const now = performance.now();
+    if (now - windowFix.at >= WINDOW_EVERY_MS) {
+      windowFix.at = now;
+      const dx = windowShift(_p, _s.x);
+      if (dx !== null) { windowFix.goal = dx; windowFix.lastGood = now; }
+      else if (now - windowFix.lastGood > WINDOW_HOLD_MS) windowFix.goal = 0;
+    }
+    windowFix.dx += (windowFix.goal - windowFix.dx) * WINDOW_SMOOTH;
+    _goal.set(_p.x + windowFix.dx, _p.y, _p.z);
     if (!placed) {
-      follow.position.copy(_p);
+      follow.position.copy(_goal);
       follow.scale.setScalar(_s.x);
       placed = true;
     } else {
-      follow.position.lerp(_p, FOLLOW_SMOOTH);
+      follow.position.lerp(_goal, FOLLOW_SMOOTH);
       follow.scale.setScalar(follow.scale.x + (_s.x - follow.scale.x) * FOLLOW_SMOOTH);
     }
     follow.visible = true;
@@ -327,7 +386,7 @@ async function main() {
     renderer.render(scene, camera);
   });
 
-  window.kccAR = { mindar, clock, active: () => active };
+  window.kccAR = { mindar, clock, active: () => active, windowFix };
 }
 
 main().catch((err) => {
