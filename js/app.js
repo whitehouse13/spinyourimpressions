@@ -1,11 +1,10 @@
 import * as THREE from "three";
 import { MindARThree } from "mindar-image-three";
-import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=93f8a2bf0e";
-import { SceneClock } from "./timeline.js?v=93f8a2bf0e";
-import { buildCupScene } from "./scene.js?v=93f8a2bf0e";
-import { capturePhoto, sharePhoto } from "./capture.js?v=93f8a2bf0e";
-import { kickCameraVideo } from "./camera-kick.js?v=93f8a2bf0e";
-import { yawFromQuat, rootPosition } from "./placement.js?v=93f8a2bf0e";
+import { isInAppBrowser, hasCamera, hasWebGL } from "./env.js?v=393fd2bbe5";
+import { SceneClock } from "./timeline.js?v=393fd2bbe5";
+import { buildCupScene } from "./scene.js?v=393fd2bbe5";
+import { capturePhoto, sharePhoto } from "./capture.js?v=393fd2bbe5";
+import { kickCameraVideo } from "./camera-kick.js?v=393fd2bbe5";
 
 // Tells ar.html's inline watchdog that the module graph loaded (CDN reachable,
 // import maps supported); failures after this point are handled by main().catch.
@@ -115,36 +114,28 @@ async function main() {
   const LOST_HINT_AFTER_MS = 1500;
   let lostTimer = null;
 
-  // Tracked placement: the ring stays upright to the screen (MindAR's full
-  // rotation for our strongly curved target tilted/jittered it, phone test
-  // 2026-09-30), but its anchor point uses the target's yaw so the ring sits
-  // over the cup's axis even when the landmark isn't centred in the window
-  // (phone test 2026-10-03; see placement.js). Smoothed, and kept in place
-  // through short tracking losses instead of vanishing.
+  // Tracked placement takes only the cup's POSITION from MindAR; the ring stays
+  // upright to the screen. Phone test 2026-09-30: MindAR's rotation for our
+  // strongly curved target tilted/shifted and jittered the ring, while the
+  // untracked picker mode (no rotation) looked level. Smoothed, and kept in
+  // place through short tracking losses instead of vanishing.
   const FOLLOW_SMOOTH = 0.25;
-  const YAW_SMOOTH = 0.15;            // yaw from a curved target is noisier than position
   const follow = new THREE.Group();
   follow.visible = false;
   scene.add(follow);
   let trackedAnchor = null;
   let placed = false;
-  let yawS = 0;
   const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
-  const _root = new THREE.Vector3();
   function updateFollow() {
     if (!trackedAnchor || !trackedAnchor.group.visible) return;
     trackedAnchor.group.updateMatrixWorld(true);
     trackedAnchor.group.matrixWorld.decompose(_p, _q, _s);
-    const yaw = yawFromQuat(_q, _p);
-    yawS = placed ? yawS + (yaw - yawS) * YAW_SMOOTH : yaw;
-    const r = rootPosition(_p, yawS, manifest.scene.cupRadius, _s.x);
-    _root.set(r.x, r.y, r.z);
     if (!placed) {
-      follow.position.copy(_root);
+      follow.position.copy(_p);
       follow.scale.setScalar(_s.x);
       placed = true;
     } else {
-      follow.position.lerp(_root, FOLLOW_SMOOTH);
+      follow.position.lerp(_p, FOLLOW_SMOOTH);
       follow.scale.setScalar(follow.scale.x + (_s.x - follow.scale.x) * FOLLOW_SMOOTH);
     }
     follow.visible = true;
