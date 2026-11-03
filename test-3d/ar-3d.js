@@ -11,13 +11,15 @@ import { MindARThree } from "mindar-image-three";
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 1.25, lift: 1.45 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 1.25, lift: 2.1 };
 const MODELS = {
   "kilkenny-A:1": CANICE,
-  "kilkenny-A:2": CANICE, // Round Tower is in the same model
+  // The Round Tower sits near the right edge of the window, so its tracked
+  // image centre is right of the cup: shift the model back over the cup.
+  "kilkenny-A:2": { ...CANICE, dx: -0.5 }, // Round Tower is in the same model
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
-    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.2, lift: 1.45 },
+    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.2, lift: 2.1 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.9;
@@ -65,7 +67,7 @@ async function loadModel(m) {
   state.load = "…"; show();
   if (viewer.getSceneCount() > 0) await viewer.removeSplatScene(0, false);
   holder.scale.setScalar(m.scale);
-  holder.position.set(0, m.lift, 0.25);
+  holder.position.set(m.dx || 0, m.lift, 0.25);
   const url = m.url;
   // This renderer treats +Y as down, so turn the model upright (180° about X).
   await viewer.addSplatScene(url, { showLoadingUI: false, splatAlphaRemovalThreshold: 5, rotation: [1, 0, 0, 0] });
@@ -132,6 +134,7 @@ async function startAR() {
       state.model = m.name; show();
       tracked = anchor;
       holder.visible = true;
+      holder.position.set(m.dx || 0, m.lift, 0.25);   // same model, other landmark
       if (loaded !== m.url) { loaded = m.url; await loadModel(m); }
     };
     anchor.onTargetLost = () => {
