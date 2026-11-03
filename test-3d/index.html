@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>KCC 3D test</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  html, body { touch-action: none; }
+  #hud { position: fixed; left: 8px; top: 8px; right: 8px; z-index: 5; color: #fff; pointer-events: none;
+    font: 14px/1.35 -apple-system, sans-serif; background: rgba(0,0,0,.55); padding: 8px 10px; border-radius: 10px; }
+  #start { position: fixed; inset: auto 20px 40px; z-index: 6; padding: 16px; font-size: 18px; border-radius: 12px; border: 0; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js",
+  "splats": "https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+} }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">Loading…</div>
+<button id="start">Start camera</button>
+<script type="module" src="ar-3d.js"></script>
+</body>
+</html>
