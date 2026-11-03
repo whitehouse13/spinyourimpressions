@@ -5,31 +5,39 @@
 import * as THREE from "three";
 import * as GS from "splats";
 import { MindARThree } from "mindar-image-three";
+import { findWindowSpan } from "./window-span.js";
 
 // Round crops the shape of the cup, glare above the buildings cut off
 // (2026-11-03); ?old=1 brings back the square building crop.
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 1.25, lift: 2.1 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 2.0, lift: 1.3 };
 const MODELS = {
   "kilkenny-A:1": CANICE,
-  // The Round Tower sits near the right edge of the window, so its tracked
-  // image centre is right of the cup: shift the model back over the cup.
-  "kilkenny-A:2": { ...CANICE, dx: -0.5 }, // Round Tower is in the same model
+  "kilkenny-A:2": CANICE, // Round Tower is in the same model
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
-    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.2, lift: 2.1 },
+    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.9, lift: 1.3 },
 };
 const params = new URLSearchParams(location.search);
-const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.9;
+const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
+// ?lift= / ?size= tune height above the cup and size without a redeploy.
+const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
+let sizeX = params.has("size") ? parseFloat(params.get("size")) : 1;
+let current = null;
+const place = () => {
+  if (!current) return;
+  holder.scale.setScalar(current.scale * sizeX);
+  holder.position.set(0, current.lift * LIFT_X, 0);
+};
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true };
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}°`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -43,18 +51,28 @@ spin.add(viewer); holder.add(spin);
 holder.visible = false;
 holder.rotation.x = TILT;   // the model floats above eye level: lean it towards the viewer
 
-// Finger control of the viewing angle: drag up/down = tilt, left/right = turn,
-// double tap = auto-spin on/off. The HUD shows the tilt so a good angle can be kept.
-let drag = null, lastTap = 0;
+// Finger control: drag up/down = tilt, left/right = turn, two-finger pinch =
+// size, double tap = auto-spin on/off. The HUD shows tilt and size.
+let drag = null, lastTap = 0, pinch = null;
+const touchGap = (ts) => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+addEventListener("touchstart", (e) => {
+  if (e.touches.length === 2) { pinch = { d: touchGap(e.touches), s: sizeX }; drag = null; }
+}, { passive: true });
+addEventListener("touchmove", (e) => {
+  if (pinch && e.touches.length === 2) {
+    sizeX = Math.min(4, Math.max(0.3, pinch.s * touchGap(e.touches) / pinch.d)); place(); show();
+  }
+}, { passive: true });
+addEventListener("touchend", (e) => { if (e.touches.length < 2) pinch = null; });
 addEventListener("pointerdown", (e) => {
-  if (e.target.id === "start") return;
+  if (e.target.id === "start" || pinch) return;
   const now = performance.now();
   if (now - lastTap < 300) state.autospin = !state.autospin;
   lastTap = now;
   drag = { x: e.clientX, y: e.clientY };
 });
 addEventListener("pointermove", (e) => {
-  if (!drag) return;
+  if (!drag || pinch) return;
   spin.rotation.y += (e.clientX - drag.x) * 0.01;
   holder.rotation.x = Math.min(1.6, Math.max(-0.3, holder.rotation.x + (e.clientY - drag.y) * 0.005));
   drag = { x: e.clientX, y: e.clientY }; show();
@@ -66,8 +84,7 @@ async function loadModel(m) {
   const t0 = performance.now();
   state.load = "…"; show();
   if (viewer.getSceneCount() > 0) await viewer.removeSplatScene(0, false);
-  holder.scale.setScalar(m.scale);
-  holder.position.set(m.dx || 0, m.lift, 0.25);
+  current = m; place();
   const url = m.url;
   // This renderer treats +Y as down, so turn the model upright (180° about X).
   await viewer.addSplatScene(url, { showLoadingUI: false, splatAlphaRemovalThreshold: 5, rotation: [1, 0, 0, 0] });
@@ -121,8 +138,44 @@ async function startAR() {
   const splatCamera = new THREE.PerspectiveCamera();
   rig.add(holder); splatScene.add(rig);
   renderer.autoClear = false;
-  const pos = new THREE.Vector3(), size = new THREE.Vector3();
+  const pos = new THREE.Vector3(), size = new THREE.Vector3(), rot = new THREE.Quaternion();
   let tracked = null, loaded = null;
+  // Like the live site (app.js): MindAR's rotation on the curved cup tilts and
+  // jitters, and its centre is the landmark, not the cup. So use the position
+  // only (model stays upright to the camera) and shift it sideways to the
+  // die-cut window found in the camera frame.
+  const sp = manifest.scene;
+  const winChord = 2 * sp.cupRadius * Math.sin(sp.cardWidth / sp.cupRadius / 2);
+  const strip = document.createElement("canvas");
+  const stripCtx = strip.getContext("2d", { willReadFrequently: true });
+  const fix = { dx: 0, goal: 0, at: 0, good: -Infinity };
+  const ndc = new THREE.Vector3(), stage = document.getElementById("stage");
+  function windowShift(p, s) {   // p = anchor position in MindAR's camera space, s = its scale
+    const video = mindar.video;
+    if (!video || !video.videoWidth || video.readyState < 2) return null;
+    const cw = stage.clientWidth, ch = stage.clientHeight;
+    const L = parseFloat(video.style.left) || 0, T = parseFloat(video.style.top) || 0;
+    const vw = parseFloat(video.style.width) || cw, vh = parseFloat(video.style.height) || ch;
+    const toVx = video.videoWidth / vw, toVy = video.videoHeight / vh;
+    ndc.copy(p).project(camera);
+    const cx = (ndc.x + 1) / 2 * cw, cy = (1 - ndc.y) / 2 * ch;
+    const k = (ch / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / -p.z;
+    const expectC = winChord * s * k, halfRowsC = 0.3 * s * k;
+    const sx = Math.max(0, Math.round((cx - 1.1 * expectC - L) * toVx));
+    const ex = Math.min(video.videoWidth, Math.round((cx + 1.1 * expectC - L) * toVx));
+    const sy = Math.max(0, Math.round((cy - halfRowsC - T) * toVy));
+    const ey = Math.min(video.videoHeight, Math.round((cy + halfRowsC - T) * toVy));
+    if (ex - sx < 20 || ey - sy < 4) return null;
+    const scale = Math.min(1, 240 / (ex - sx));
+    const w = Math.max(1, Math.round((ex - sx) * scale)), h = Math.max(2, Math.round((ey - sy) * scale));
+    strip.width = w; strip.height = h;
+    try { stripCtx.drawImage(video, sx, sy, ex - sx, ey - sy, 0, 0, w, h); } catch { return null; }
+    const toStrip = (xc) => ((xc - L) * toVx - sx) * scale;
+    const span = findWindowSpan(stripCtx.getImageData(0, 0, w, h).data, w, h, toStrip(cx), expectC * toVx * scale);
+    if (!span) return null;
+    const midC = ((span.x0 + span.x1) / 2 / scale + sx) / toVx + L;
+    return (midC - cx) / k;   // MindAR world units
+  }
   manifest.targets.forEach((tg, i) => {
     const anchor = mindar.addAnchor(i);
     const key = `${tg.variant}:${tg.landmark}`;
@@ -134,7 +187,6 @@ async function startAR() {
       state.model = m.name; show();
       tracked = anchor;
       holder.visible = true;
-      holder.position.set(m.dx || 0, m.lift, 0.25);   // same model, other landmark
       if (loaded !== m.url) { loaded = m.url; await loadModel(m); }
     };
     anchor.onTargetLost = () => {
@@ -152,8 +204,17 @@ async function startAR() {
     if (state.autospin && !drag) spin.rotation.y += 0.006;
     if (tracked && tracked.group.visible) {
       tracked.group.updateWorldMatrix(true, false);
-      tracked.group.matrixWorld.decompose(pos, rig.quaternion, size);
-      rig.position.copy(pos).divideScalar(size.x);
+      tracked.group.matrixWorld.decompose(pos, rot, size);
+      const now = performance.now();
+      if (now - fix.at >= 150) {
+        fix.at = now;
+        const dx = windowShift(pos, size.x);
+        if (dx !== null) { fix.goal = dx; fix.good = now; } else if (now - fix.good > 1000) fix.goal = 0;
+      }
+      fix.dx += (fix.goal - fix.dx) * 0.2;
+      pos.x += fix.dx;
+      const goal = pos.divideScalar(size.x);
+      if (rig.userData.placed) rig.position.lerp(goal, 0.25); else { rig.position.copy(goal); rig.userData.placed = true; }
       splatCamera.projectionMatrix.copy(camera.projectionMatrix);
       // MindAR's near plane is 10, past the shrunk model; use near 0.01, far 100.
       splatCamera.projectionMatrix.elements[10] = -100.01 / 99.99;
