@@ -11,13 +11,13 @@ import { MindARThree } from "mindar-image-three";
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 1.25, lift: 0.75 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 1.25, lift: 1.45 };
 const MODELS = {
   "kilkenny-A:1": CANICE,
   "kilkenny-A:2": CANICE, // Round Tower is in the same model
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
-    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.2, lift: 0.7 },
+    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.2, lift: 1.45 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.9;
@@ -111,6 +111,8 @@ async function startAR() {
     filterMinCF: 0.0001, filterBeta: 0.001, missTolerance: 20,
   });
   const { renderer, scene, camera } = mindar;
+  // Phone test 2026-11-03: 10 fps at full Retina resolution; draw at 1x.
+  renderer.setPixelRatio(1);
   // MindAR works in target pixels, far too large for the splat sort, so the
   // model gets its own scene at unit scale with the anchor pose shrunk to match.
   const splatScene = new THREE.Scene(), rig = new THREE.Group();
