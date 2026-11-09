@@ -15,10 +15,16 @@ const CANICE = OLD
   : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 2.0, lift: 1.3 };
 const MODELS = {
   "kilkenny-A:1": CANICE,
-  "kilkenny-A:2": CANICE, // Round Tower is in the same model
+  // St Kieran's College stands next to the Round Tower on panorama A (user,
+  // 2026-11-04): on the Round Tower target for now, to test switching models.
+  "kilkenny-A:2": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", scale: 1.5, lift: 1.3 },
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
     : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.9, lift: 1.3 },
+  // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
+  // ±sweep degrees around its facade instead of turning all the way round.
+  "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", scale: 1.6, lift: 1.3, sweep: 40 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", scale: 1.9, lift: 1.3 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
@@ -26,6 +32,13 @@ const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
 const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
 let sizeX = params.has("size") ? parseFloat(params.get("size")) : 1;
 let current = null;
+// Turn = finger turn + auto-spin phase; a model with `sweep` sways instead of spinning.
+let userYaw = 0, phase = 0;
+const turn = () => {
+  if (state.autospin && !drag) phase += 0.006;
+  const sw = current?.sweep;
+  spin.rotation.y = userYaw + (sw ? Math.sin(phase * 1.5) * sw * Math.PI / 180 : phase);
+};
 const place = () => {
   if (!current) return;
   holder.scale.setScalar(current.scale * sizeX);
@@ -73,7 +86,7 @@ addEventListener("pointerdown", (e) => {
 });
 addEventListener("pointermove", (e) => {
   if (!drag || pinch) return;
-  spin.rotation.y += (e.clientX - drag.x) * 0.01;
+  userYaw += (e.clientX - drag.x) * 0.01;
   holder.rotation.x = Math.min(1.6, Math.max(-0.3, holder.rotation.x + (e.clientY - drag.y) * 0.005));
   drag = { x: e.clientX, y: e.clientY }; show();
 });
@@ -84,7 +97,7 @@ async function loadModel(m) {
   const t0 = performance.now();
   state.load = "…"; show();
   if (viewer.getSceneCount() > 0) await viewer.removeSplatScene(0, false);
-  current = m; place();
+  current = m; userYaw = 0; phase = 0; place();
   const url = m.url;
   // This renderer treats +Y as down, so turn the model upright (180° about X).
   await viewer.addSplatScene(url, { showLoadingUI: false, splatAlphaRemovalThreshold: 5, rotation: [1, 0, 0, 0] });
@@ -118,7 +131,7 @@ async function startNoCam() {
   const m = MODELS[new URLSearchParams(location.search).get("model") || "kilkenny-A:1"];
   state.target = "none"; state.model = m.name;
   await loadModel(m);
-  loop(renderer, scene, camera, () => { if (state.autospin && !drag) spin.rotation.y += 0.006; });
+  loop(renderer, scene, camera, turn);
 }
 
 async function startAR() {
@@ -201,7 +214,7 @@ async function startAR() {
   renderer.setAnimationLoop(() => {
     renderer.clear();
     draw(scene, camera);
-    if (state.autospin && !drag) spin.rotation.y += 0.006;
+    turn();
     if (tracked && tracked.group.visible) {
       tracked.group.updateWorldMatrix(true, false);
       tracked.group.matrixWorld.decompose(pos, rot, size);
