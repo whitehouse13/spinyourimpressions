@@ -14,10 +14,10 @@ const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
   : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 2.0, lift: 1.3 };
 const MODELS = {
-  "kilkenny-A:1": CANICE,
-  // St Kieran's College stands next to the Round Tower on panorama A (user,
-  // 2026-11-04): on the Round Tower target for now, to test switching models.
-  "kilkenny-A:2": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", scale: 1.5, lift: 1.3 },
+  // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
+  // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", scale: 1.5, lift: 1.3 },
+  "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
     : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.9, lift: 1.3 },
