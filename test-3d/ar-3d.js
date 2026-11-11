@@ -12,19 +12,19 @@ import { findWindowSpan } from "./window-span.js";
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 2.0, lift: 1.3 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", scale: 2.0, lift: 1.5 };
 const MODELS = {
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
-  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", scale: 1.5, lift: 1.3 },
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", scale: 1.5, lift: 1.5 },
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
-    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.9, lift: 1.3 },
+    : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", scale: 1.9, lift: 1.5 },
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
-  "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", scale: 1.6, lift: 1.3, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", scale: 1.9, lift: 1.3 },
+  "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", scale: 1.6, lift: 1.5, sweep: 40 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", scale: 1.9, lift: 1.5 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
