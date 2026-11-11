@@ -12,11 +12,11 @@ import { findWindowSpan } from "./window-span.js";
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", r: 0.41, scale: 2.0, lift: 1.5 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", up: 0.15, r: 0.41, scale: 2.0, lift: 1.5 };
 const MODELS = {
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
-  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", r: 0.53, scale: 1.5, lift: 1.5 },
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.3, r: 0.53, scale: 1.5, lift: 1.5 },
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
@@ -24,7 +24,7 @@ const MODELS = {
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
   "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", r: 0.48, scale: 1.9, lift: 1.5 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.3, r: 0.48, scale: 1.9, lift: 1.5 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
@@ -51,7 +51,9 @@ const place = () => {
   holder.scale.setScalar(k);
   if (SCENE && current.r) {
     const dip = current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.06 * k;
-    holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip, -SCENE.cupRadius);
+    // up = extra height for wide models (phone test 2026-11-11: castle/college looked
+    // like they sat on the rim, St Mary's looked right).
+    holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip + (current.up || 0), -SCENE.cupRadius);
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
 const hud = document.getElementById("hud");
