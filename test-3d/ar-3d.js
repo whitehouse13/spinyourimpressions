@@ -56,13 +56,32 @@ const place = () => {
     holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip + (current.up || 0), -SCENE.cupRadius);
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
+// Gravity (phone test 2026-11-11: looking down at the cup, "up" followed the
+// phone, so the model slid onto the rim). The cup stands upright, so take "up"
+// from the phone's orientation: up in device/camera axes (x right, y up,
+// z out of the screen) = (-sinγ·cosβ, sinβ, cosγ·cosβ), then undo screen rotation.
+const gravityUp = new THREE.Vector3(0, 1, 0);
+let hasGravity = false;
+const _g = new THREE.Vector3();
+addEventListener("deviceorientation", (e) => {
+  if (e.beta == null || e.gamma == null) return;
+  const b = THREE.MathUtils.degToRad(e.beta), g = THREE.MathUtils.degToRad(e.gamma);
+  _g.set(-Math.sin(g) * Math.cos(b), Math.sin(b), Math.cos(g) * Math.cos(b));
+  const a = THREE.MathUtils.degToRad(screen.orientation?.angle || 0);
+  const x = _g.x * Math.cos(a) + _g.y * Math.sin(a), y = -_g.x * Math.sin(a) + _g.y * Math.cos(a);
+  _g.set(x, y, _g.z).normalize();
+  if (!hasGravity) { gravityUp.copy(_g); hasGravity = true; } else gravityUp.lerp(_g, 0.2).normalize();
+});
+async function askMotion() {   // iOS: must be called from the tap on Start
+  try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
+}
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true };
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · ${hasGravity ? "gravity" : "no gravity"}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -165,6 +184,7 @@ async function startAR() {
   rig.add(holder); splatScene.add(rig);
   renderer.autoClear = false;
   const pos = new THREE.Vector3(), size = new THREE.Vector3(), rot = new THREE.Quaternion();
+  const toCam = new THREE.Vector3(), side = new THREE.Vector3(), basis = new THREE.Matrix4(), rigQ = new THREE.Quaternion();
   let tracked = null, loaded = null;
   // Like the live site (app.js): MindAR's rotation on the curved cup tilts and
   // jitters, and its centre is the landmark, not the cup. So use the position
@@ -241,6 +261,15 @@ async function startAR() {
       pos.x += fix.dx;
       const goal = pos.divideScalar(size.x);
       if (rig.userData.placed) rig.position.lerp(goal, 0.25); else { rig.position.copy(goal); rig.userData.placed = true; }
+      if (hasGravity && !params.has("nogravity")) {
+        const up = gravityUp;
+        toCam.copy(rig.position).negate().addScaledVector(up, rig.position.dot(up)); // horizontal, cup -> camera
+        if (toCam.lengthSq() > 1e-6) {
+          toCam.normalize(); side.crossVectors(up, toCam);
+          basis.makeBasis(side, up, toCam); rigQ.setFromRotationMatrix(basis);
+          rig.quaternion.slerp(rigQ, 0.2);
+        }
+      } else rig.quaternion.identity();
       splatCamera.projectionMatrix.copy(camera.projectionMatrix);
       // MindAR's near plane is 10, past the shrunk model; use near 0.01, far 100.
       splatCamera.projectionMatrix.elements[10] = -100.01 / 99.99;
@@ -256,5 +285,5 @@ async function startAR() {
 }
 
 show();
-btn.onclick = () => (nocam ? startNoCam() : startAR()).catch((e) => { hud.textContent = "ERROR " + e.message; });
+btn.onclick = () => askMotion().then(() => (nocam ? startNoCam() : startAR())).catch((e) => { hud.textContent = "ERROR " + e.message; });
 if (nocam) btn.click();
