@@ -16,7 +16,7 @@ const CANICE = OLD
 const MODELS = {
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
-  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", r: 0.53, scale: 1.5, lift: 1.5 },
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.18, r: 0.53, scale: 1.5, lift: 1.5 },
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
@@ -24,7 +24,7 @@ const MODELS = {
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
   "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", r: 0.48, scale: 1.9, lift: 1.5 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.18, r: 0.48, scale: 1.9, lift: 1.5 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
@@ -55,7 +55,7 @@ const place = () => {
     const dip = 0.5 * current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.06 * k;
     // up = extra height for wide models (phone test 2026-11-11: castle/college looked
     // like they sat on the rim, St Mary's looked right).
-    holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip, -SCENE.cupRadius);
+    holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip + (current.up || 0), -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
 // Gravity (phone test 2026-11-11: looking down at the cup, "up" followed the
@@ -77,13 +77,14 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
+const BUILD = "12b";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true };
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · ${hasGravity ? "gravity" : "no gravity"}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
