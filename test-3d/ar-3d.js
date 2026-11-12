@@ -12,11 +12,11 @@ import { findWindowSpan } from "./window-span.js";
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", up: 0.15, r: 0.41, scale: 2.0, lift: 1.5 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", r: 0.41, scale: 2.0, lift: 1.5 };
 const MODELS = {
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
-  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.3, r: 0.53, scale: 1.5, lift: 1.5 },
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", r: 0.53, scale: 1.5, lift: 1.5 },
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
@@ -24,7 +24,7 @@ const MODELS = {
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
   "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.3, r: 0.48, scale: 1.9, lift: 1.5 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", r: 0.48, scale: 1.9, lift: 1.5 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
@@ -44,16 +44,18 @@ const turn = () => {
 // front edge of its tilted ground disc still clears the rim by GAP.
 // Units = target widths; r = model footprint radius (model units).
 let SCENE = null;           // manifest.scene: rimY, cupRadius
-const GAP = 0.25 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
+const GAP = 0.2 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
 const place = () => {
   if (!current) return;
   const k = current.scale * sizeX;
   holder.scale.setScalar(k);
   if (SCENE && current.r) {
-    const dip = current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.06 * k;
+    // Phone test 2026-11-12 (with gravity): models floated 3.5-10 cm above the rim;
+    // half the tilt dip and no per-model `up` give ~1.5-2 cm.
+    const dip = 0.5 * current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.06 * k;
     // up = extra height for wide models (phone test 2026-11-11: castle/college looked
     // like they sat on the rim, St Mary's looked right).
-    holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip + (current.up || 0), -SCENE.cupRadius);
+    holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip, -SCENE.cupRadius);
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
 // Gravity (phone test 2026-11-11: looking down at the cup, "up" followed the
@@ -255,7 +257,9 @@ async function startAR() {
       if (now - fix.at >= 150) {
         fix.at = now;
         const dx = windowShift(pos, size.x);
-        if (dx !== null) { fix.goal = dx; fix.good = now; } else if (now - fix.good > 1000) fix.goal = 0;
+        // Clamp (2026-11-12): the white gate flap beside the cup fooled the edge
+        // search; the window centre can't be more than ~half a window from the landmark.
+        if (dx !== null) { fix.goal = Math.max(-0.45, Math.min(0.45, dx)); fix.good = now; } else if (now - fix.good > 1000) fix.goal = 0;
       }
       fix.dx += (fix.goal - fix.dx) * 0.2;
       pos.x += fix.dx;
