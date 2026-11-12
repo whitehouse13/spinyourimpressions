@@ -78,7 +78,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12c";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12d";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -266,14 +266,19 @@ async function startAR() {
       fix.dx += (fix.goal - fix.dx) * 0.2;
       pos.x += fix.dx;
       const goal = pos.divideScalar(size.x);
-      if (rig.userData.placed) rig.position.lerp(goal, 0.25); else { rig.position.copy(goal); rig.userData.placed = true; }
+      // Adaptive smoothing (phone test 2026-11-12, build 12c: models jumped even with the
+      // cup and phone still). Small jumps = tracking noise → follow slowly; big moves → fast.
+      if (rig.userData.placed) {
+        const jump = rig.position.distanceTo(goal) / Math.max(0.5, goal.length() * 0.1);
+        rig.position.lerp(goal, Math.min(0.35, 0.04 + 0.3 * jump * jump));
+      } else { rig.position.copy(goal); rig.userData.placed = true; }
       if (hasGravity && !params.has("nogravity")) {
         const up = gravityUp;
         toCam.copy(rig.position).negate().addScaledVector(up, rig.position.dot(up)); // horizontal, cup -> camera
         if (toCam.lengthSq() > 1e-6) {
           toCam.normalize(); side.crossVectors(up, toCam);
           basis.makeBasis(side, up, toCam); rigQ.setFromRotationMatrix(basis);
-          rig.quaternion.slerp(rigQ, 0.2);
+          rig.quaternion.slerp(rigQ, 0.08);
         }
       } else rig.quaternion.identity();
       splatCamera.projectionMatrix.copy(camera.projectionMatrix);
