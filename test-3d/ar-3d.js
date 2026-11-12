@@ -16,7 +16,7 @@ const CANICE = OLD
 const MODELS = {
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
-  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.18, r: 0.53, scale: 1.5, lift: 1.5 },
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.1, r: 0.53, scale: 1.5, lift: 1.5 },
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
@@ -24,7 +24,7 @@ const MODELS = {
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
   "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.18, r: 0.48, scale: 1.9, lift: 1.5 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
@@ -43,11 +43,12 @@ const turn = () => {
 // over the cup's axis (cupRadius behind the wall) and high enough that the
 // front edge of its tilted ground disc still clears the rim by GAP.
 // Units = target widths; r = model footprint radius (model units).
+const SCALE_X = 1.2;
 let SCENE = null;           // manifest.scene: rimY, cupRadius
-const GAP = 0.2 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
+const GAP = 0.1 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
 const place = () => {
   if (!current) return;
-  const k = current.scale * sizeX;
+  const k = current.scale * SCALE_X * sizeX;   // SCALE_X: phone test 2026-11-12, models looked small next to the cup
   holder.scale.setScalar(k);
   if (SCENE && current.r) {
     // Phone test 2026-11-12 (with gravity): models floated 3.5-10 cm above the rim;
@@ -77,7 +78,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12b";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12c";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
