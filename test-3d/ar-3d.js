@@ -80,7 +80,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12f";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12g";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -297,12 +297,22 @@ async function startAR() {
       // Project the model's base and top; if the top passes 85 % of the screen height,
       // shrink the model (it stays on the rim) so it fits; grow back when there is room.
       if (SCENE && current?.r && !params.has("nofit")) {
+        // 12g (iPhone stayed at fit 1.00 while the model was cut off): check the whole
+        // ground-disc rim and the roof line, not only the centre — looking down at the
+        // cup, the back edge of the tilted disc is what reaches the screen top.
         rig.updateMatrixWorld(true);
-        const kNow = holder.scale.x;
         base.copy(holder.position).applyMatrix4(rig.matrixWorld).project(splatCamera);
-        top.copy(holder.position); top.y += 1.1 * current.r * kNow;
-        top.applyMatrix4(rig.matrixWorld).project(splatCamera);
-        const room = 0.85 - base.y, need = top.y - base.y;
+        let topY = -Infinity;
+        const r = current.r;
+        for (let i = 0; i < 8; i++) {
+          const a = i * Math.PI / 4;
+          for (const h of [0, 0.9 * r]) {
+            top.set(Math.cos(a) * r, h, Math.sin(a) * r);   // holder space = model units, +Y up
+            holder.localToWorld(top).project(splatCamera);
+            if (top.y > topY) topY = top.y;
+          }
+        }
+        const room = 0.85 - base.y, need = topY - base.y;
         let want = fitK;
         if (need > 1e-3) want = Math.max(0.45, Math.min(1, fitK * room / need));
         if (Math.abs(want - fitK) > 0.01) { fitK += (want - fitK) * 0.15; place(); }
