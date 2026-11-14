@@ -58,7 +58,7 @@ const place = () => {
     const dip = 0.5 * current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.06 * k;
     // up = extra height for wide models (phone test 2026-11-11: castle/college looked
     // like they sat on the rim, St Mary's looked right).
-    holder.position.set(0, SCENE.rimY + GAP * LIFT_X + dip + (current.up || 0), -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
+    holder.position.set(0, SCENE.rimY + (GAP * LIFT_X + (current.up || 0)) * (0.5 + 0.5 * fitK) + dip, -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
 // Gravity (phone test 2026-11-11: looking down at the cup, "up" followed the
@@ -80,7 +80,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12g";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12h";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -106,7 +106,7 @@ holder.rotation.x = TILT;   // the model floats above eye level: lean it towards
 let drag = null, lastTap = 0, pinch = null;
 const touchGap = (ts) => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
 addEventListener("touchstart", (e) => {
-  if (e.touches.length === 2) { pinch = { d: touchGap(e.touches), s: sizeX }; drag = null; }
+  if (TUNE && e.touches.length === 2) { pinch = { d: touchGap(e.touches), s: sizeX }; drag = null; }
 }, { passive: true });
 addEventListener("touchmove", (e) => {
   if (pinch && e.touches.length === 2) {
@@ -117,7 +117,9 @@ addEventListener("touchend", (e) => { if (e.touches.length < 2) pinch = null; })
 addEventListener("pointerdown", (e) => {
   if (e.target.id === "start" || pinch) return;
   const now = performance.now();
-  if (now - lastTap < 300) state.autospin = !state.autospin;
+  // 12h: double tap / pinch only with ?tune — a stray pinch (size 1.23) counted as a
+  // double tap and stopped the spin on iPhone (2026-11-14).
+  if (TUNE && now - lastTap < 300) state.autospin = !state.autospin;
   lastTap = now;
   drag = { x: e.clientX, y: e.clientY };
 });
@@ -306,15 +308,15 @@ async function startAR() {
         const r = current.r;
         for (let i = 0; i < 8; i++) {
           const a = i * Math.PI / 4;
-          for (const h of [0, 0.9 * r]) {
-            top.set(Math.cos(a) * r, h, Math.sin(a) * r);   // holder space = model units, +Y up
-            holder.localToWorld(top).project(splatCamera);
-            if (top.y > topY) topY = top.y;
-          }
+          top.set(Math.cos(a) * r, 0, Math.sin(a) * r);   // ground-disc rim; holder space = model units, +Y up
+          holder.localToWorld(top).project(splatCamera);
+          if (top.y > topY) topY = top.y;
         }
-        const room = 0.85 - base.y, need = topY - base.y;
+        top.set(0, 0.9 * r, 0); holder.localToWorld(top).project(splatCamera);   // roof over the centre
+        if (top.y > topY) topY = top.y;
+        const room = 0.92 - base.y, need = topY - base.y;   // 12h: 12g (0.85, min 0.45) shrank to the minimum almost always
         let want = fitK;
-        if (need > 1e-3) want = Math.max(0.45, Math.min(1, fitK * room / need));
+        if (need > 1e-3) want = Math.max(0.6, Math.min(1, fitK * room / need));
         if (Math.abs(want - fitK) > 0.01) { fitK += (want - fitK) * 0.15; place(); }
       }
       draw(splatScene, splatCamera);
