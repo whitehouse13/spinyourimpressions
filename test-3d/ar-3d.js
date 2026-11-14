@@ -32,8 +32,9 @@ const TUNE = params.has("tune");
 // Per-platform tuning (2026-11-14): auto-fit is tuned on Android first; iPhone keeps
 // the 12e placement until its own test. ?fit / ?nofit force it either way.
 const ANDROID = /Android/i.test(navigator.userAgent);
+const LEAN = params.has("lean") || (ANDROID && !params.has("nolean"));
 const FIT = params.has("fit") || (ANDROID && !params.has("nofit"));
-const QUALITY = params.has("full") ? "full" : params.has("mid") ? "mid" : params.has("lite") ? "lite" : ANDROID ? "lite" : "full";
+const QUALITY = params.has("full") ? "full" : params.has("mid") ? "mid" : params.has("lite") ? "lite" : ANDROID ? "mid" : "full";   // 2026-11-14: user picked mid for Android
 // ?lift= / ?size= tune height above the cup and size without a redeploy.
 const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
 let sizeX = params.has("size") ? parseFloat(params.get("size")) : 1;
@@ -85,7 +86,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12k";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12l";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -297,6 +298,14 @@ async function startAR() {
           rig.quaternion.slerp(rigQ, 0.08);
         }
       } else rig.quaternion.identity();
+      // Adaptive lean (Android, 12l): the model leans TILT towards the viewer so it reads
+      // from eye level; looking down at the cup it showed from straight above (St Mary's in
+      // hand, 2026-11-14). Lean less by the camera's height angle over the cup.
+      if (LEAN && hasGravity && !TUNE) {
+        const elev = Math.asin(Math.max(-1, Math.min(1, -rig.position.clone().normalize().dot(gravityUp))));
+        const want = Math.max(0, Math.min(TILT, TILT - elev));
+        if (Math.abs(want - holder.rotation.x) > 0.01) { holder.rotation.x += (want - holder.rotation.x) * 0.1; place(); }
+      }
       splatCamera.projectionMatrix.copy(camera.projectionMatrix);
       // MindAR's near plane is 10, past the shrunk model; use near 0.01, far 100.
       splatCamera.projectionMatrix.elements[10] = -100.01 / 99.99;
