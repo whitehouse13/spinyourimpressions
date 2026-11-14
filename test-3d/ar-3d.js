@@ -33,6 +33,7 @@ const TUNE = params.has("tune");
 // the 12e placement until its own test. ?fit / ?nofit force it either way.
 const ANDROID = /Android/i.test(navigator.userAgent);
 const FIT = params.has("fit") || (ANDROID && !params.has("nofit"));
+const QUALITY = params.has("full") ? "full" : params.has("mid") ? "mid" : params.has("lite") ? "lite" : ANDROID ? "lite" : "full";
 // ?lift= / ?size= tune height above the cup and size without a redeploy.
 const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
 let sizeX = params.has("size") ? parseFloat(params.get("size")) : 1;
@@ -84,14 +85,14 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12j";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12k";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true };
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${(ANDROID ? !params.has("full") : params.has("lite")) ? " lite" : ""} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -144,10 +145,10 @@ async function loadModel(m) {
   state.load = "…"; show();
   if (viewer.getSceneCount() > 0) await viewer.removeSplatScene(0, false);
   current = m; userYaw = 0; phase = 0; place();
-  // Android (2026-11-14, 9-21 fps with the model on screen): ~120k-splat "lite" copies
-  // (splat-transform --decimate-adaptive 120000, SH 0). ?full forces the full models.
-  const LITE = ANDROID ? !params.has("full") : params.has("lite");
-  const url = LITE ? m.url.replace(".compressed.ply", "-lite.compressed.ply") : m.url;
+  // Android (2026-11-14, 9-21 fps with the model on screen): lighter copies made with
+  // splat-transform --decimate-adaptive (SH 0): lite ~120k, mid ~200k splats.
+  // ?lite / ?mid / ?full pick one on any phone.
+  const url = QUALITY === "full" ? m.url : m.url.replace(".compressed.ply", `-${QUALITY}.compressed.ply`);
   // This renderer treats +Y as down, so turn the model upright (180° about X).
   await viewer.addSplatScene(url, { showLoadingUI: false, splatAlphaRemovalThreshold: 5, rotation: [1, 0, 0, 0] });
   state.load = ((performance.now() - t0) / 1000).toFixed(1) + " s"; show();
