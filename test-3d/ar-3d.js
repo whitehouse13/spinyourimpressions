@@ -29,6 +29,10 @@ const MODELS = {
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
 const TUNE = params.has("tune");
+// Per-platform tuning (2026-11-14): auto-fit is tuned on Android first; iPhone keeps
+// the 12e placement until its own test. ?fit / ?nofit force it either way.
+const ANDROID = /Android/i.test(navigator.userAgent);
+const FIT = params.has("fit") || (ANDROID && !params.has("nofit"));
 // ?lift= / ?size= tune height above the cup and size without a redeploy.
 const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
 let sizeX = params.has("size") ? parseFloat(params.get("size")) : 1;
@@ -80,14 +84,14 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12h";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12i";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true };
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${fitK.toFixed(2)} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -298,7 +302,7 @@ async function startAR() {
       // model sat above the top of the screen and the phone had to be tilted a lot.
       // Project the model's base and top; if the top passes 85 % of the screen height,
       // shrink the model (it stays on the rim) so it fits; grow back when there is room.
-      if (SCENE && current?.r && !params.has("nofit")) {
+      if (SCENE && current?.r && FIT) {
         // 12g (iPhone stayed at fit 1.00 while the model was cut off): check the whole
         // ground-disc rim and the roof line, not only the centre — looking down at the
         // cup, the back edge of the tilted disc is what reaches the screen top.
