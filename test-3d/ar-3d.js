@@ -28,6 +28,7 @@ const MODELS = {
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
+const TUNE = params.has("tune");
 // ?lift= / ?size= tune height above the cup and size without a redeploy.
 const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
 let sizeX = params.has("size") ? parseFloat(params.get("size")) : 1;
@@ -78,7 +79,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12d";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12e";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -99,7 +100,7 @@ spin.add(viewer); holder.add(spin);
 holder.visible = false;
 holder.rotation.x = TILT;   // the model floats above eye level: lean it towards the viewer
 
-// Finger control: drag up/down = tilt, left/right = turn, two-finger pinch =
+// Finger control: drag left/right = turn (up/down = tilt only with ?tune), two-finger pinch =
 // size, double tap = auto-spin on/off. The HUD shows tilt and size.
 let drag = null, lastTap = 0, pinch = null;
 const touchGap = (ts) => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
@@ -122,7 +123,10 @@ addEventListener("pointerdown", (e) => {
 addEventListener("pointermove", (e) => {
   if (!drag || pinch) return;
   userYaw += (e.clientX - drag.x) * 0.01;
-  holder.rotation.x = Math.min(1.6, Math.max(-0.3, holder.rotation.x + (e.clientY - drag.y) * 0.005));
+  // Tilt by finger only with ?tune: on iPhone a stray vertical swipe (Control
+  // Centre / screen recording, 2026-11-14) pushed tilt to the 92° limit and the
+  // models showed from straight above.
+  if (TUNE) holder.rotation.x = Math.min(1.6, Math.max(-0.3, holder.rotation.x + (e.clientY - drag.y) * 0.005));
   drag = { x: e.clientX, y: e.clientY }; place(); show();
 });
 addEventListener("pointerup", () => { drag = null; });
