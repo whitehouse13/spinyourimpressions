@@ -46,10 +46,11 @@ const turn = () => {
 // Units = target widths; r = model footprint radius (model units).
 const SCALE_X = 1.2;
 let SCENE = null;           // manifest.scene: rimY, cupRadius
+let fitK = 1;               // < 1 when the model would go past the top of the screen
 const GAP = 0.1 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
 const place = () => {
   if (!current) return;
-  const k = current.scale * SCALE_X * sizeX;   // SCALE_X: phone test 2026-11-12, models looked small next to the cup
+  const k = current.scale * SCALE_X * sizeX * fitK;   // fitK: auto-fit to the screen top (12f); SCALE_X: phone test 2026-11-12, models looked small next to the cup
   holder.scale.setScalar(k);
   if (SCENE && current.r) {
     // Phone test 2026-11-12 (with gravity): models floated 3.5-10 cm above the rim;
@@ -79,14 +80,14 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12e";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12f";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true };
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${fitK.toFixed(2)} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -192,6 +193,7 @@ async function startAR() {
   rig.add(holder); splatScene.add(rig);
   renderer.autoClear = false;
   const pos = new THREE.Vector3(), size = new THREE.Vector3(), rot = new THREE.Quaternion();
+  const base = new THREE.Vector3(), top = new THREE.Vector3();
   const toCam = new THREE.Vector3(), side = new THREE.Vector3(), basis = new THREE.Matrix4(), rigQ = new THREE.Quaternion();
   let tracked = null, loaded = null;
   // Like the live site (app.js): MindAR's rotation on the curved cup tilts and
@@ -290,6 +292,21 @@ async function startAR() {
       splatCamera.projectionMatrix.elements[10] = -100.01 / 99.99;
       splatCamera.projectionMatrix.elements[14] = -2 / 99.99;
       splatCamera.projectionMatrixInverse.copy(splatCamera.projectionMatrix).invert();
+      // Auto-fit (phone test 2026-11-14, Android): with the cup close to the camera the
+      // model sat above the top of the screen and the phone had to be tilted a lot.
+      // Project the model's base and top; if the top passes 85 % of the screen height,
+      // shrink the model (it stays on the rim) so it fits; grow back when there is room.
+      if (SCENE && current?.r && !params.has("nofit")) {
+        rig.updateMatrixWorld(true);
+        const kNow = holder.scale.x;
+        base.copy(holder.position).applyMatrix4(rig.matrixWorld).project(splatCamera);
+        top.copy(holder.position); top.y += 1.1 * current.r * kNow;
+        top.applyMatrix4(rig.matrixWorld).project(splatCamera);
+        const room = 0.85 - base.y, need = top.y - base.y;
+        let want = fitK;
+        if (need > 1e-3) want = Math.max(0.45, Math.min(1, fitK * room / need));
+        if (Math.abs(want - fitK) > 0.01) { fitK += (want - fitK) * 0.15; place(); }
+      }
       draw(splatScene, splatCamera);
     }
     if (++n === 30) {
