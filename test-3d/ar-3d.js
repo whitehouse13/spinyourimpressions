@@ -29,6 +29,9 @@ const MODELS = {
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
 const TUNE = params.has("tune");
+// 12r (2026-11-18, café meetings next day): the main site links here, so the status line and the
+// diagnostic dots show only with ?debug (or ?tune).
+const DEBUG = params.has("debug") || TUNE;
 // Per-platform tuning (2026-11-14): auto-fit is tuned on Android first; iPhone keeps
 // the 12e placement until its own test. ?fit / ?nofit force it either way.
 const ANDROID = /Android/i.test(navigator.userAgent);
@@ -99,8 +102,9 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12q";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12r";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
+if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true, shift: 0 };
@@ -110,7 +114,7 @@ const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true, shif
 // Android by default (?shift turns it back on). Dots: red = where MindAR sees the landmark,
 // green = where the model base is drawn (?nodots hides them) — tells tracking from placement.
 const NOSHIFT = params.has("noshift") || (ANDROID && !params.has("shift"));
-const DOTS = !params.has("nodots");   // remove (or flip to ?dots) when the tuning is done — user 2026-11-18
+const DOTS = DEBUG && !params.has("nodots");   // 12r: dots/HUD only with ?debug (user: remove them when done)
 const mkDot = (c) => { const d = document.createElement("div"); d.style.cssText = `position:fixed;z-index:7;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:${c};border:2px solid #fff;display:none;pointer-events:none`; document.body.append(d); return d; };
 const dotA = DOTS ? mkDot("#e33") : null, dotM = DOTS ? mkDot("#2c4") : null;
 const putDot = (d, v) => { if (!d) return; if (!v) { d.style.display = "none"; return; } d.style.display = "block"; d.style.left = ((v.x + 1) / 2 * innerWidth) + "px"; d.style.top = ((1 - v.y) / 2 * innerHeight) + "px"; };
@@ -120,7 +124,7 @@ const show = () => {
   hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
 };
 window.kcc3d = state;
-window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
+window.addEventListener("error", (e) => { hud.style.display = "block"; hud.textContent = "ERROR " + e.message; });
 
 const viewer = new GS.DropInViewer({
   gpuAcceleratedSort: false, sharedMemoryForWorkers: false, integerBasedSort: true,
@@ -376,5 +380,5 @@ async function startAR() {
 }
 
 show();
-btn.onclick = () => askMotion().then(() => (nocam ? startNoCam() : startAR())).catch((e) => { hud.textContent = "ERROR " + e.message; });
+btn.onclick = () => askMotion().then(() => (nocam ? startNoCam() : startAR())).catch((e) => { hud.style.display = "block"; hud.textContent = "ERROR " + e.message; });
 if (nocam) btn.click();
