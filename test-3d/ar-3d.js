@@ -93,7 +93,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12o";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12p";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -104,14 +104,14 @@ const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true, shif
 // Android by default (?shift turns it back on). Dots: red = where MindAR sees the landmark,
 // green = where the model base is drawn (?nodots hides them) — tells tracking from placement.
 const NOSHIFT = params.has("noshift") || (ANDROID && !params.has("shift"));
-const DOTS = !params.has("nodots");
+const DOTS = !params.has("nodots");   // remove (or flip to ?dots) when the tuning is done — user 2026-11-18
 const mkDot = (c) => { const d = document.createElement("div"); d.style.cssText = `position:fixed;z-index:7;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:${c};border:2px solid #fff;display:none;pointer-events:none`; document.body.append(d); return d; };
 const dotA = DOTS ? mkDot("#e33") : null, dotM = DOTS ? mkDot("#2c4") : null;
 const putDot = (d, v) => { if (!d) return; if (!v) { d.style.display = "none"; return; } d.style.display = "block"; d.style.left = ((v.x + 1) / 2 * innerWidth) + "px"; d.style.top = ((1 - v.y) / 2 * innerHeight) + "px"; };
 const _dv = new THREE.Vector3();
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · cam ${state.cam || "-"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -280,6 +280,15 @@ async function startAR() {
     };
   });
   await mindar.start();
+  // 12p: the camera picture goes black for ~10 s after "target lost" on Android. Watch the
+  // video clock; if it stops for 1.5 s, say so in the HUD (cam) and try play() again.
+  { let last = -1, still = 0, kicks = 0;
+    setInterval(() => {
+      const v = mindar.video; if (!v) return;
+      if (v.currentTime === last) still += 500; else { still = 0; last = v.currentTime; }
+      state.cam = still >= 1500 ? `STALL ${(still / 1000).toFixed(1)}s` + (kicks ? ` k${kicks}` : "") : "ok" + (kicks ? ` k${kicks}` : "");
+      if (still >= 1500 && still % 1500 === 0) { kicks++; v.play().catch(() => {}); }
+    }, 500); }
   show();
   const draw = renderer.render.bind(renderer);
   let n = 0, t0 = performance.now();
@@ -354,7 +363,9 @@ async function startAR() {
         const room = 0.92 - base.y, need = topY - base.y;   // 12h: 12g (0.85, min 0.45) shrank to the minimum almost always
         let want = fitK;
         if (need > 1e-3) want = Math.max(0.6, Math.min(1, fitK * room / need));
-        if (Math.abs(want - fitK) > 0.01) { fitK += (want - fitK) * 0.15; place(); }
+        // 12p (Android 2026-11-18: St Mary's, the tallest model, "jumped" most — fit swung
+        // 0.61 <-> 0.99 every second): ignore small changes and follow slowly.
+        if (Math.abs(want - fitK) > 0.06) { fitK += (want - fitK) * 0.04; place(); }
       }
       rig.updateMatrixWorld(true);
       putDot(dotM, _dv.copy(holder.position).applyMatrix4(rig.matrixWorld).project(splatCamera));
