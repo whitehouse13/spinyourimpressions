@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>KCC Postcards in 3D</title>
+<meta name="description" content="Point your camera at a KCC postcard and watch the landmark rise in 3D.">
+<style>
+  :root { --green-900: #0f2a1d; --green-700: #1f4d36; --green-500: #2f6f4f; --cream: #f4eee1; --gold: #d9b26f; }
+  html, body { margin: 0; height: 100%; background: var(--green-900); color: var(--cream); overflow: hidden;
+    font: 16px/1.4 "Avenir Next", -apple-system, "Segoe UI", Roboto, sans-serif; touch-action: none; }
+  #stage { position: fixed; inset: 0; }
+  #intro { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 18px; padding: 24px; text-align: center; box-sizing: border-box;
+    background: radial-gradient(ellipse at top, var(--green-500), var(--green-900) 70%); }
+  #intro img { width: 132px; height: 132px; }
+  #intro h1 { margin: 0; font: 700 28px/1.15 Georgia, serif; }
+  #intro p { margin: 0; max-width: 340px; opacity: .9; }
+  #start { margin-top: 6px; padding: 15px 34px; font: 600 18px/1 inherit; color: var(--green-900); background: var(--cream);
+    border: 0; border-radius: 999px; }
+  #err { color: #ffb4a8; min-height: 1.4em; }
+  #hint, #card { position: fixed; left: 16px; right: 16px; z-index: 5; box-sizing: border-box;
+    background: rgba(15, 42, 29, .82); border: 1px solid rgba(217, 178, 111, .45); border-radius: 14px; padding: 12px 14px; }
+  #hint { top: 16px; text-align: center; }
+  #card { bottom: 18px; display: none; }
+  #card h2 { margin: 0 0 4px; font: 700 19px/1.2 Georgia, serif; color: var(--gold); }
+  #card p { margin: 0; font-size: 14px; }
+  #card .soon { margin-top: 6px; font-weight: 600; }
+  #debug { position: fixed; left: 8px; bottom: 8px; z-index: 6; font: 11px monospace; color: #fff; background: rgba(0,0,0,.5);
+    padding: 3px 6px; border-radius: 6px; display: none; }
+  .hidden { display: none !important; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js",
+  "splats": "https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+} }
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="intro">
+  <img src="logo.png" alt="KCC">
+  <h1>Bring your postcard to life</h1>
+  <p>Lay the postcard on a table, tap the button and point your camera at the picture on the front.</p>
+  <button id="start">Start camera</button>
+  <div id="err"></div>
+</div>
+<div id="hint" class="hidden">Point your camera at the picture on the front of the postcard</div>
+<div id="card"><h2></h2><p class="blurb"></p><p class="soon hidden">The 3D model of this landmark is coming soon.</p></div>
+<div id="debug"></div>
+<script type="module" src="postcards.js?v=7e83e2fa8b"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+[
+ {
+  "slug": "smithwicks",
+  "name": "Smithwick's",
+  "blurb": "Franciscan friars brewed ale on this spot in the 1200s. John Smithwick started his brewery here in 1710 — quietly, since Catholics couldn't legally own property.",
+  "model": null,
+  "r": null
+ },
+ {
+  "slug": "st-marys",
+  "name": "St Mary's",
+  "blurb": "Built 1843–1857, right through the Great Famine, and paid for by local people. Its tower rises nearly 60 m over the city.",
+  "model": "../test-3d/data/st-marys-cup.compressed.ply",
+  "r": 0.34
+ },
+ {
+  "slug": "kilkenny-castle",
+  "name": "Kilkenny Castle",
+  "blurb": "Home of the Butler family for almost 600 years — until 1967, when they sold it to the people of Kilkenny for just £50.",
+  "model": "../test-3d/data/kilkenny-castle-cup.compressed.ply",
+  "r": 0.48
+ },
+ {
+  "slug": "st-kierans",
+  "name": "St Kieran's College",
+  "blurb": "Founded in 1782, the year the Catholic Relief Act let Catholics open schools again after the penal laws. Its Gothic-revival college building went up in the 1830s and 1840s.",
+  "model": "../test-3d/data/st-kierans-cup.compressed.ply",
+  "r": 0.53
+ },
+ {
+  "slug": "butter-slip",
+  "name": "Butter Slip",
+  "blurb": "Built in 1616 and lined with butter stalls on market days — its shady steps kept the butter cool, and made the lane famously slippery.",
+  "model": null,
+  "r": null
+ },
+ {
+  "slug": "st-canice",
+  "name": "St Canice's",
+  "blurb": "Begun around 1202, it's Ireland's second-longest cathedral and gave the city its name: Cill Chainnigh, the Church of Canice. Beside it stands the 1,000-year-old Round Tower; climb its 121 steps for the best view in Kilkenny.",
+  "model": "../test-3d/data/st-canice-cup.compressed.ply",
+  "r": 0.41
+ }
+]
