@@ -86,14 +86,22 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12m";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12n";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
 const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true, shift: 0 };
 // 12m (Android video 2026-11-18: models sometimes sat beside the cup): the HUD shows the
 // sideways window shift; ?noshift turns it off to compare.
-const NOSHIFT = params.has("noshift");
+// 12n (Android video 2026-11-18, 12m): shift jumped between the ±0.45 clamps, so it is off on
+// Android by default (?shift turns it back on). Dots: red = where MindAR sees the landmark,
+// green = where the model base is drawn (?nodots hides them) — tells tracking from placement.
+const NOSHIFT = params.has("noshift") || (ANDROID && !params.has("shift"));
+const DOTS = !params.has("nodots");
+const mkDot = (c) => { const d = document.createElement("div"); d.style.cssText = `position:fixed;z-index:7;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:${c};border:2px solid #fff;display:none;pointer-events:none`; document.body.append(d); return d; };
+const dotA = DOTS ? mkDot("#e33") : null, dotM = DOTS ? mkDot("#2c4") : null;
+const putDot = (d, v) => { if (!d) return; if (!v) { d.style.display = "none"; return; } d.style.display = "block"; d.style.left = ((v.x + 1) / 2 * innerWidth) + "px"; d.style.top = ((1 - v.y) / 2 * innerHeight) + "px"; };
+const _dv = new THREE.Vector3();
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
   hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${hasGravity ? "gravity" : "no gravity"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
@@ -275,6 +283,7 @@ async function startAR() {
     if (tracked && tracked.group.visible) {
       tracked.group.updateWorldMatrix(true, false);
       tracked.group.matrixWorld.decompose(pos, rot, size);
+      putDot(dotA, _dv.copy(pos).project(camera));
       const now = performance.now();
       if (!NOSHIFT && now - fix.at >= 150) {
         fix.at = now;
@@ -340,8 +349,10 @@ async function startAR() {
         if (need > 1e-3) want = Math.max(0.6, Math.min(1, fitK * room / need));
         if (Math.abs(want - fitK) > 0.01) { fitK += (want - fitK) * 0.15; place(); }
       }
+      rig.updateMatrixWorld(true);
+      putDot(dotM, _dv.copy(holder.position).applyMatrix4(rig.matrixWorld).project(splatCamera));
       draw(splatScene, splatCamera);
-    }
+    } else { putDot(dotA, null); putDot(dotM, null); }
     if (++n === 30) {
       const t = performance.now();
       state.fps = Math.round(30000 / (t - t0)); n = 0; t0 = t; show();
