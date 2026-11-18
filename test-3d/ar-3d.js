@@ -12,11 +12,11 @@ import { findWindowSpan } from "./window-span.js";
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", r: 0.41, scale: 2.0, lift: 1.5 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", r: 0.41, scale: 2.0, lift: 1.5, dx: -0.15 };
 const MODELS = {
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
-  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.1, r: 0.53, scale: 1.5, lift: 1.5 },
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.1, r: 0.53, scale: 1.5, lift: 1.5, dx: 0.12 },
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
@@ -24,7 +24,7 @@ const MODELS = {
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
   "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5, dx: 0.22 },
 };
 const params = new URLSearchParams(location.search);
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
@@ -51,6 +51,8 @@ const turn = () => {
 // front edge of its tilted ground disc still clears the rim by GAP.
 // Units = target widths; r = model footprint radius (model units).
 const SCALE_X = 1.2;
+const DX_K = params.has("dx") ? parseFloat(params.get("dx")) : 1;
+const DX_ON = (ANDROID || params.has("dx")) && DX_K !== 0;
 let SCENE = null;           // manifest.scene: rimY, cupRadius
 let fitK = 1;               // < 1 when the model would go past the top of the screen
 const GAP = 0.1 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
@@ -64,7 +66,11 @@ const place = () => {
     const dip = 0.5 * current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.06 * k;
     // up = extra height for wide models (phone test 2026-11-11: castle/college looked
     // like they sat on the rim, St Mary's looked right).
-    holder.position.set(0, SCENE.rimY + (GAP * LIFT_X + (current.up || 0)) * (0.5 + 0.5 * fitK) + dip, -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
+    // dx (12q, Android 12p video 2026-11-18): MindAR's anchor is the landmark, which sits off the
+    // window centre by a fixed amount per landmark (the inner layer turns to fixed stops): castle
+    // ~0.22 target widths left, St Kieran's 0.12 left, St Canice's 0.15 right. Android only
+    // (iPhone untouched until its own test); ?dx=<factor> scales it, ?dx=0 turns it off.
+    holder.position.set(DX_ON ? (current.dx || 0) * DX_K : 0, SCENE.rimY + (GAP * LIFT_X + (current.up || 0)) * (0.5 + 0.5 * fitK) + dip, -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
 // Gravity (phone test 2026-11-11: looking down at the cup, "up" followed the
@@ -93,7 +99,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12p";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12q";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -111,7 +117,7 @@ const putDot = (d, v) => { if (!d) return; if (!v) { d.style.display = "none"; r
 const _dv = new THREE.Vector3();
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · cam ${state.cam || "-"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -280,15 +286,6 @@ async function startAR() {
     };
   });
   await mindar.start();
-  // 12p: the camera picture goes black for ~10 s after "target lost" on Android. Watch the
-  // video clock; if it stops for 1.5 s, say so in the HUD (cam) and try play() again.
-  { let last = -1, still = 0, kicks = 0;
-    setInterval(() => {
-      const v = mindar.video; if (!v) return;
-      if (v.currentTime === last) still += 500; else { still = 0; last = v.currentTime; }
-      state.cam = still >= 1500 ? `STALL ${(still / 1000).toFixed(1)}s` + (kicks ? ` k${kicks}` : "") : "ok" + (kicks ? ` k${kicks}` : "");
-      if (still >= 1500 && still % 1500 === 0) { kicks++; v.play().catch(() => {}); }
-    }, 500); }
   show();
   const draw = renderer.render.bind(renderer);
   let n = 0, t0 = performance.now();
