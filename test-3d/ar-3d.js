@@ -86,14 +86,17 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12l";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12m";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
-const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true };
+const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true, shift: 0 };
+// 12m (Android video 2026-11-18: models sometimes sat beside the cup): the HUD shows the
+// sideways window shift; ?noshift turns it off to compare.
+const NOSHIFT = params.has("noshift");
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${hasGravity ? "gravity" : "no gravity"} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${hasGravity ? "gravity" : "no gravity"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
@@ -273,7 +276,7 @@ async function startAR() {
       tracked.group.updateWorldMatrix(true, false);
       tracked.group.matrixWorld.decompose(pos, rot, size);
       const now = performance.now();
-      if (now - fix.at >= 150) {
+      if (!NOSHIFT && now - fix.at >= 150) {
         fix.at = now;
         const dx = windowShift(pos, size.x);
         // Clamp (2026-11-12): the white gate flap beside the cup fooled the edge
@@ -281,6 +284,7 @@ async function startAR() {
         if (dx !== null) { fix.goal = Math.max(-0.45, Math.min(0.45, dx)); fix.good = now; } else if (now - fix.good > 1000) fix.goal = 0;
       }
       fix.dx += (fix.goal - fix.dx) * 0.2;
+      state.shift = fix.dx;
       pos.x += fix.dx;
       const goal = pos.divideScalar(size.x);
       // Adaptive smoothing (phone test 2026-11-12, build 12c: models jumped even with the
