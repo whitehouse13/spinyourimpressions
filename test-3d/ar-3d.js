@@ -72,6 +72,8 @@ const place = () => {
 // from the phone's orientation: up in device/camera axes (x right, y up,
 // z out of the screen) = (-sinγ·cosβ, sinβ, cosγ·cosβ), then undo screen rotation.
 const gravityUp = new THREE.Vector3(0, 1, 0);
+const NOROLL = /Android/i.test(navigator.userAgent) && !new URLSearchParams(location.search).has("roll");
+let rawRoll = 0;
 let hasGravity = false;
 const _g = new THREE.Vector3();
 addEventListener("deviceorientation", (e) => {
@@ -81,12 +83,17 @@ addEventListener("deviceorientation", (e) => {
   const a = THREE.MathUtils.degToRad(screen.orientation?.angle || 0);
   const x = _g.x * Math.cos(a) + _g.y * Math.sin(a), y = -_g.x * Math.sin(a) + _g.y * Math.cos(a);
   _g.set(x, y, _g.z).normalize();
+  rawRoll = _g.x;
+  // 12o (Android 12n dots: the model base sat ~0.1 screen right of the landmark every time):
+  // drop the sideways (roll) part of "up" on Android — near upright the Euler angles lose the
+  // roll anyway; ?roll keeps it. The HUD shows the raw value (roll) to confirm the cause.
+  if (NOROLL) _g.setX(0).normalize();
   if (!hasGravity) { gravityUp.copy(_g); hasGravity = true; } else gravityUp.lerp(_g, 0.2).normalize();
 });
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12n";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12o";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 const btn = document.getElementById("start");
 const nocam = new URLSearchParams(location.search).has("nocam");
@@ -104,7 +111,7 @@ const putDot = (d, v) => { if (!d) return; if (!v) { d.style.display = "none"; r
 const _dv = new THREE.Vector3();
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${hasGravity ? "gravity" : "no gravity"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.textContent = "ERROR " + e.message; });
