@@ -35,8 +35,10 @@ const DEBUG = params.has("debug") || TUNE;
 // Per-platform tuning (2026-11-14): auto-fit is tuned on Android first; iPhone keeps
 // the 12e placement until its own test. ?fit / ?nofit force it either way.
 const ANDROID = /Android/i.test(navigator.userAgent);
-const LEAN = params.has("lean") || (ANDROID && !params.has("nolean"));
-const FIT = params.has("fit") || (ANDROID && !params.has("nofit"));
+// 12s (iPhone screenshots 2026-11-18: every model at a different height / side): the Android
+// tuning (12m-12q) now runs on every phone; ?nolean / ?nofit / ?roll / ?shift / ?dx=0 turn parts off.
+const LEAN = !params.has("nolean");
+const FIT = !params.has("nofit");
 const QUALITY = params.has("full") ? "full" : params.has("mid") ? "mid" : params.has("lite") ? "lite" : ANDROID ? "mid" : "full";   // 2026-11-14: user picked mid for Android
 // ?lift= / ?size= tune height above the cup and size without a redeploy.
 const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
@@ -55,10 +57,14 @@ const turn = () => {
 // Units = target widths; r = model footprint radius (model units).
 const SCALE_X = 1.2;
 const DX_K = params.has("dx") ? parseFloat(params.get("dx")) : 1;
-const DX_ON = (ANDROID || params.has("dx")) && DX_K !== 0;
+const DX_ON = DX_K !== 0;
 let SCENE = null;           // manifest.scene: rimY, cupRadius
 let fitK = 1;               // < 1 when the model would go past the top of the screen
-const GAP = 0.1 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
+// 12s: one clear height for every model — ~0.7 cm over the rim (1 target width ≈ 6.5 cm on the cup:
+// cupRadius 0.604 ↔ ~3.9 cm); no per-model `up`, no fit scaling. ?gap=<factor> scales it.
+const GAP = 0.108 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
+// 12s: lean at least this much towards the viewer (user: "tilt a bit towards me"); ?minlean=<rad>.
+const MIN_LEAN = params.has("minlean") ? parseFloat(params.get("minlean")) : 0.2;
 const place = () => {
   if (!current) return;
   const k = current.scale * SCALE_X * sizeX * fitK;   // fitK: auto-fit to the screen top (12f); SCALE_X: phone test 2026-11-12, models looked small next to the cup
@@ -73,7 +79,7 @@ const place = () => {
     // window centre by a fixed amount per landmark (the inner layer turns to fixed stops): castle
     // ~0.22 target widths left, St Kieran's 0.12 left, St Canice's 0.15 right. Android only
     // (iPhone untouched until its own test); ?dx=<factor> scales it, ?dx=0 turns it off.
-    holder.position.set(DX_ON ? (current.dx || 0) * DX_K : 0, SCENE.rimY + (GAP * LIFT_X + (current.up || 0)) * (0.5 + 0.5 * fitK) + dip, -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
+    holder.position.set(DX_ON ? (current.dx || 0) * DX_K : 0, SCENE.rimY + GAP * LIFT_X + dip, -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
 // Gravity (phone test 2026-11-11: looking down at the cup, "up" followed the
@@ -81,7 +87,7 @@ const place = () => {
 // from the phone's orientation: up in device/camera axes (x right, y up,
 // z out of the screen) = (-sinγ·cosβ, sinβ, cosγ·cosβ), then undo screen rotation.
 const gravityUp = new THREE.Vector3(0, 1, 0);
-const NOROLL = /Android/i.test(navigator.userAgent) && !new URLSearchParams(location.search).has("roll");
+const NOROLL = !new URLSearchParams(location.search).has("roll");
 let rawRoll = 0;
 let hasGravity = false;
 const _g = new THREE.Vector3();
@@ -102,7 +108,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12r";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12s";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -113,7 +119,7 @@ const state = { target: "-", model: "-", load: "-", fps: 0, autospin: true, shif
 // 12n (Android video 2026-11-18, 12m): shift jumped between the ±0.45 clamps, so it is off on
 // Android by default (?shift turns it back on). Dots: red = where MindAR sees the landmark,
 // green = where the model base is drawn (?nodots hides them) — tells tracking from placement.
-const NOSHIFT = params.has("noshift") || (ANDROID && !params.has("shift"));
+const NOSHIFT = !params.has("shift");
 const DOTS = DEBUG && !params.has("nodots");   // 12r: dots/HUD only with ?debug (user: remove them when done)
 const mkDot = (c) => { const d = document.createElement("div"); d.style.cssText = `position:fixed;z-index:7;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:${c};border:2px solid #fff;display:none;pointer-events:none`; document.body.append(d); return d; };
 const dotA = DOTS ? mkDot("#e33") : null, dotM = DOTS ? mkDot("#2c4") : null;
@@ -333,7 +339,7 @@ async function startAR() {
       // hand, 2026-11-14). Lean less by the camera's height angle over the cup.
       if (LEAN && hasGravity && !TUNE) {
         const elev = Math.asin(Math.max(-1, Math.min(1, -rig.position.clone().normalize().dot(gravityUp))));
-        const want = Math.max(0, Math.min(TILT, TILT - elev));
+        const want = Math.max(MIN_LEAN, Math.min(TILT, TILT - elev));
         if (Math.abs(want - holder.rotation.x) > 0.01) { holder.rotation.x += (want - holder.rotation.x) * 0.1; place(); }
       }
       splatCamera.projectionMatrix.copy(camera.projectionMatrix);
