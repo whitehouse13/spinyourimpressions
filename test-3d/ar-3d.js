@@ -124,7 +124,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12w";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12x";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -141,9 +141,17 @@ const mkDot = (c) => { const d = document.createElement("div"); d.style.cssText 
 const dotA = DOTS ? mkDot("#e33") : null, dotM = DOTS ? mkDot("#2c4") : null;
 const putDot = (d, v) => { if (!d) return; if (!v) { d.style.display = "none"; return; } d.style.display = "block"; d.style.left = ((v.x + 1) / 2 * innerWidth) + "px"; d.style.top = ((1 - v.y) / 2 * innerHeight) + "px"; };
 const _dv = new THREE.Vector3();
+// 12x depth fix (iPhone 12w video 19.11): on the curved cup MindAR trades distance for tilt —
+// at eye level from ~30 cm it put the cup up to ~1.5x too close, so the rim offset projected
+// bigger and St Mary's floated 2-3 cm instead of ~0.5. The target's vertical extent on screen
+// is undistorted by the curve (the cup wall is straight vertically), so take the distance
+// from it: D = f * h * cos(elev) / screen height. ?nodepth turns it off.
+const DEPTH = !params.has("nodepth");
+const _da = new THREE.Vector3(), _db = new THREE.Vector3();
+let depthK = 1;
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.style.display = "block"; hud.textContent = "ERROR " + e.message; });
@@ -334,6 +342,20 @@ async function startAR() {
       fix.dx += (fix.goal - fix.dx) * 0.2;
       state.shift = fix.dx;
       pos.x += fix.dx;
+      if (DEPTH) {
+        const g = tracked.group.matrixWorld, cw = stage.clientWidth, ch = stage.clientHeight;
+        _da.set(0, 0.25, 0).applyMatrix4(g).project(camera);
+        _db.set(0, -0.25, 0).applyMatrix4(g).project(camera);
+        const pxH = Math.hypot((_da.x - _db.x) * cw / 2, (_da.y - _db.y) * ch / 2);
+        const fpx = (ch / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+        const dEst = pos.length() / size.x;
+        const sinE = hasGravity ? Math.max(-1, Math.min(1, -_dv.copy(pos).normalize().dot(gravityUp))) : 0;
+        if (pxH > 4 && dEst > 0) {
+          const k = Math.max(0.6, Math.min(1.8, fpx * 0.5 * Math.sqrt(1 - sinE * sinE) / pxH / dEst));
+          depthK += (k - depthK) * 0.15;
+        }
+        pos.multiplyScalar(depthK);
+      }
       const goal = pos.divideScalar(size.x);
       // Adaptive smoothing (phone test 2026-11-12, build 12c: models jumped even with the
       // cup and phone still). Small jumps = tracking noise → follow slowly; big moves → fast.
