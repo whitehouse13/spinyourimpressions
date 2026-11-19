@@ -6,6 +6,7 @@ import * as THREE from "three";
 import * as GS from "splats";
 import { MindARThree } from "mindar-image-three";
 import { findWindowSpan } from "./window-span.js";
+import { solveConePose, poseFromMindAR, rimInCamera, TW_CM, RIM } from "./cone-pose.js?v=13a";
 
 // Round crops the shape of the cup, glare above the buildings cut off
 // (2026-11-03); ?old=1 brings back the square building crop.
@@ -124,7 +125,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12y";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13a";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -152,9 +153,23 @@ const _dv = new THREE.Vector3();
 const DEPTH = params.has("depth");
 const _da = new THREE.Vector3(), _db = new THREE.Vector3();
 let depthK = 1;
+// 13a (2026-11-19, replay of the iPhone reference videos IMG_9041/9042 on the Mac): the cup pose now
+// comes from MindAR's tracked points fitted to the cup's real cone (cone-pose.js), not from MindAR's
+// flat-picture guess. On those videos the old placement put the model's front edge -0.8..+8 cm over
+// the rim and up to 1.9 cm to the side; the cone fit keeps it 0.6-0.9 cm over the rim, on the axis.
+// The rig stands on the sleeve-top circle, "up" = the cup's own axis (also right when the cup is held
+// tilted), so gravity, dx, B_DY, shift and depth are not used. ?flat = the old 12y placement.
+// VFOV = the camera's field of view across the long side of the picture (iPhone 1x camera ≈ 71.6°;
+// MindAR itself assumes 45°); the replay showed ±20 % here moves the model only ±0.3 cm. ?fov=<deg>.
+const FLAT = params.has("flat");
+const VFOV = params.has("fov") ? parseFloat(params.get("fov")) : 71.6;
+const RIM_UP = 0.3 / TW_CM;    // the paper rim stands ~3 mm above the sleeve top (reference video frames)
+const CONE_GAP = (params.has("cgap") ? parseFloat(params.get("cgap")) : 0.7) / TW_CM;   // front edge of the model's ground over the rim, cm
+const cone = { pose: null, target: -1, at: 0, err: 0, n: 0, k: 1 };
+window.kccCone = cone;
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · build ${BUILD}`;
 };
 window.kcc3d = state;
 window.addEventListener("error", (e) => { hud.style.display = "block"; hud.textContent = "ERROR " + e.message; });
@@ -267,6 +282,7 @@ async function startAR() {
   const pos = new THREE.Vector3(), size = new THREE.Vector3(), rot = new THREE.Quaternion();
   const base = new THREE.Vector3(), top = new THREE.Vector3();
   const toCam = new THREE.Vector3(), side = new THREE.Vector3(), basis = new THREE.Matrix4(), rigQ = new THREE.Quaternion();
+  const coneUp = new THREE.Vector3(0, 1, 0);
   let tracked = null, loaded = null;
   // Like the live site (app.js): MindAR's rotation on the curved cup tilts and
   // jitters, and its centre is the landmark, not the cup. So use the position
@@ -306,6 +322,7 @@ async function startAR() {
   }
   manifest.targets.forEach((tg, i) => {
     const anchor = mindar.addAnchor(i);
+    anchor.kccIndex = i;
     const key = `${tg.variant}:${tg.landmark}`;
     anchor.onTargetFound = async () => {
       state.target = key;
@@ -323,6 +340,25 @@ async function startAR() {
     };
   });
   await mindar.start();
+  // 13a: take MindAR's per-frame point matches (target px <-> camera px) and fit the cone to them.
+  const ctrl = mindar.controller;
+  if (!FLAT && ctrl?.tracker) {
+    const track = ctrl.tracker.track.bind(ctrl.tracker);
+    ctrl.tracker.track = (inputT, mvt, ti) => {
+      const r = track(inputT, mvt, ti);
+      try {
+        if (r.worldCoords.length >= 6) {
+          const P = ctrl.projectionTransform, fm = P[0][0];
+          const f = Math.max(ctrl.inputWidth, ctrl.inputHeight) / 2 / Math.tan(VFOV * Math.PI / 360);
+          const now = performance.now();
+          const init = cone.pose && cone.target === ti && now - cone.at < 300 ? cone.pose : poseFromMindAR(mvt, fm, f);
+          const p = solveConePose(r.worldCoords, r.screenCoords, { f, cx: P[0][2], cy: P[1][2] }, init);
+          if (p && p.err < 4) Object.assign(cone, { pose: p, target: ti, at: now, err: p.err, n: p.n, k: f / fm });
+        }
+      } catch (e) { console.warn("cone pose", e); }
+      return r;
+    };
+  }
   show();
   const draw = renderer.render.bind(renderer);
   let n = 0, t0 = performance.now();
@@ -330,7 +366,47 @@ async function startAR() {
     renderer.clear();
     draw(scene, camera);
     turn();
-    if (tracked && tracked.group.visible) {
+    const coneOK = !FLAT && tracked && tracked.group.visible && cone.pose && cone.target === tracked.kccIndex && performance.now() - cone.at < 500;
+    if (coneOK) {
+      // 13a: rig = sleeve-top centre, oriented by the cup's axis and the direction to the camera.
+      const { C, up: u } = rimInCamera(cone.pose);
+      const goal = pos.set(C[0], -C[1], -C[2]).divideScalar(TW_CM);   // CV camera (cm) -> three.js camera (tw)
+      const upC = _da.set(u[0], -u[1], -u[2]).normalize();
+      if (rig.userData.placed) {
+        const jump = rig.position.distanceTo(goal) / Math.max(0.5, goal.length() * 0.1);
+        rig.position.lerp(goal, Math.min(0.5, 0.15 + 0.3 * jump * jump));
+        coneUp.lerp(upC, 0.25).normalize();
+      } else { rig.position.copy(goal); coneUp.copy(upC); rig.userData.placed = true; }
+      toCam.copy(rig.position).negate().addScaledVector(coneUp, rig.position.dot(coneUp));
+      if (toCam.lengthSq() > 1e-6) {
+        toCam.normalize(); side.crossVectors(coneUp, toCam);
+        basis.makeBasis(side, coneUp, toCam); rig.quaternion.setFromRotationMatrix(basis);
+      }
+      if (LEAN && !TUNE) {
+        const elev = Math.asin(Math.max(-1, Math.min(1, -_db.copy(rig.position).normalize().dot(coneUp))));
+        holder.rotation.x += (Math.max(MIN_LEAN, Math.min(MAX_LEAN, TILT, TILT - elev)) - holder.rotation.x) * 0.1;
+      }
+      if (current) {
+        const k = (current.r ? FOOT / current.r : current.scale * SCALE_X) * sizeX;
+        holder.scale.setScalar(k);
+        const dip = current.r ? current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.02 * k : 0;
+        holder.position.set(0, RIM_UP + CONE_GAP + dip, 0);
+      }
+      splatCamera.projectionMatrix.copy(camera.projectionMatrix);
+      splatCamera.projectionMatrix.elements[0] *= cone.k;   // true focal (MindAR draws with its 45° one)
+      splatCamera.projectionMatrix.elements[5] *= cone.k;
+      splatCamera.projectionMatrix.elements[10] = -100.01 / 99.99;
+      splatCamera.projectionMatrix.elements[14] = -2 / 99.99;
+      splatCamera.projectionMatrixInverse.copy(splatCamera.projectionMatrix).invert();
+      rig.updateMatrixWorld(true);
+      if (DOTS) {   // red = rim point nearest the camera (cone fit), green = front edge of the model's ground
+        _dv.copy(toCam).multiplyScalar(RIM.r / TW_CM).add(rig.position).addScaledVector(coneUp, RIM_UP);
+        putDot(dotA, _dv.project(splatCamera));
+        _dv.set(0, -FOOT * Math.sin(holder.rotation.x), FOOT * Math.cos(holder.rotation.x)).add(holder.position).applyMatrix4(rig.matrixWorld);
+        putDot(dotM, _dv.project(splatCamera));
+      }
+      draw(splatScene, splatCamera);
+    } else if (FLAT && tracked && tracked.group.visible) {
       tracked.group.updateWorldMatrix(true, false);
       tracked.group.matrixWorld.decompose(pos, rot, size);
       putDot(dotA, _dv.copy(pos).project(camera));
