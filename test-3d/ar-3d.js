@@ -124,7 +124,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12x";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12y";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -145,8 +145,11 @@ const _dv = new THREE.Vector3();
 // at eye level from ~30 cm it put the cup up to ~1.5x too close, so the rim offset projected
 // bigger and St Mary's floated 2-3 cm instead of ~0.5. The target's vertical extent on screen
 // is undistorted by the curve (the cup wall is straight vertically), so take the distance
-// from it: D = f * h * cos(elev) / screen height. ?nodepth turns it off.
-const DEPTH = !params.has("nodepth");
+// from it: D = f * h * cos(elev) / screen height.
+// 12y: OFF by default (opt-in ?depth) — on the phone (12x video 19.11) the factor swung 0.6-1.8:
+// ~1.5 at eye level, 0.6 looking down at the cup in hand (model huge, far above), so it did not
+// measure the real distance.
+const DEPTH = params.has("depth");
 const _da = new THREE.Vector3(), _db = new THREE.Vector3();
 let depthK = 1;
 const show = () => {
