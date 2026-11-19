@@ -64,12 +64,15 @@ let SCENE = null;           // manifest.scene: rimY, cupRadius
 let fitK = 1;               // < 1 when the model would go past the top of the screen
 // 12s/12t: one clear height for every model — front edge ~0.6 cm over the rim (12t) (1 target width ≈ 6.5 cm on the cup:
 // cupRadius 0.604 ↔ ~3.9 cm); no per-model `up`, no fit scaling. ?gap=<factor> scales it.
-const GAP = 0.092 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
+const GAP = 0.062 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
 // 12s: lean at least this much towards the viewer (user: "tilt a bit towards me"); ?minlean=<rad>.
 const MIN_LEAN = params.has("minlean") ? parseFloat(params.get("minlean")) : 0.12;   // 12t: 0.2 -> 0.12, the lean lifted the back of the disc ~1 cm
 // 12t: one size for every model — ground-disc radius FOOT target widths (0.8 ≈ 5.2 cm, i.e. ~10 cm across,
 // a little wider than the 9 cm rim); before, footprints ran 10-14 cm (scale × r per model). ?foot=<tw>.
-const FOOT = params.has("foot") ? parseFloat(params.get("foot")) : 0.8;
+const FOOT = params.has("foot") ? parseFloat(params.get("foot")) : 0.72;   // 12u: 0.8 -> 0.72 (≈ the rim, 9.4 cm across), the disc overhung the rim towards the camera
+// 12u (iPhone 12t video 2026-11-19: St Mary's at eye level leaned 14° and floated ~2.5 cm, the castle
+// ~1.7 cm): the lean is capped so it no longer lifts the model when the phone is low; ?maxlean=<rad>.
+const MAX_LEAN = params.has("maxlean") ? parseFloat(params.get("maxlean")) : 0.16;
 const place = () => {
   if (!current) return;
   const k = (current.r ? FOOT / current.r : current.scale * SCALE_X) * sizeX * fitK;   // fitK: auto-fit to the screen top (12f); SCALE_X: phone test 2026-11-12, models looked small next to the cup
@@ -80,7 +83,7 @@ const place = () => {
     // 12t: the models' ground is at y≈0 (measured in the .ply: 1st percentile −0.01..−0.04 model units),
     // so the old +0.06·k (~0.9 cm) only lifted them; dip = how far the front edge of the leaning disc
     // drops, so that front edge clears the rim by GAP (~0.6 cm).
-    const dip = current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.03 * k;
+    const dip = current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.02 * k;   // 12u: 0.03 -> 0.02
     // up = extra height for wide models (phone test 2026-11-11: castle/college looked
     // like they sat on the rim, St Mary's looked right).
     // dx (12q, Android 12p video 2026-11-18): MindAR's anchor is the landmark, which sits off the
@@ -116,7 +119,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12t";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12u";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -347,7 +350,7 @@ async function startAR() {
       // hand, 2026-11-14). Lean less by the camera's height angle over the cup.
       if (LEAN && hasGravity && !TUNE) {
         const elev = Math.asin(Math.max(-1, Math.min(1, -rig.position.clone().normalize().dot(gravityUp))));
-        const want = Math.max(MIN_LEAN, Math.min(TILT, TILT - elev));
+        const want = Math.max(MIN_LEAN, Math.min(MAX_LEAN, TILT, TILT - elev));
         if (Math.abs(want - holder.rotation.x) > 0.01) { holder.rotation.x += (want - holder.rotation.x) * 0.1; place(); }
       }
       splatCamera.projectionMatrix.copy(camera.projectionMatrix);
