@@ -6,21 +6,25 @@ import * as THREE from "three";
 import * as GS from "splats";
 import { MindARThree } from "mindar-image-three";
 import { findWindowSpan } from "./window-span.js";
-import { solveConePose, poseFromMindAR, rimInCamera, TW_CM, RIM } from "./cone-pose.js?v=13a";
+import { solveConePose, poseFromMindAR, rimInCamera, TW_CM, RIM } from "./cone-pose.js?v=13c";
 
 // Round crops the shape of the cup, glare above the buildings cut off
 // (2026-11-03); ?old=1 brings back the square building crop.
 const OLD = new URLSearchParams(location.search).has("old");
 const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
-  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", r: 0.41, scale: 2.0, lift: 1.5, dx: -0.15 };
+  : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", r: 0.41, scale: 2.0, lift: 1.5, dx: -0.15, grow: 1.21 };
 const MODELS = {
   // 12v (iPhone 12u video 2026-11-19): on cup B MindAR's anchor sits ~1.3 cm higher on the cup than on
   // cup A (red dot), so with one rimY the B models floated ~1.4 cm higher (St Mary's ~2.7 cm, castle ~2 cm
   // vs St Kieran's / St Canice's ~1 cm). B_DY lowers every cup-B model; ?bdy=<target widths>.
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
-  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.1, r: 0.53, scale: 1.5, lift: 1.5, dx: 0.12 },
+  // 13c grow (iPhone 13a video 19.11: "all but St Mary's look small"): every building is already
+  // ~1.5 r wide, but St Mary's stands 1.26 r tall and the low ones only 0.3-0.55 r (measured in the
+  // .ply), so they read small. grow = (St Mary's area / own area)^(1/4) -> about the rim's width.
+  // ?nogrow turns it off.
+  "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.1, r: 0.53, scale: 1.5, lift: 1.5, dx: 0.12, grow: 1.37 },
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
@@ -28,7 +32,7 @@ const MODELS = {
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
   "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5, dx: 0.22 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5, dx: 0.22, grow: 1.33 },
 };
 const params = new URLSearchParams(location.search);
 for (const [k, m] of Object.entries(MODELS)) m.cupB = k.startsWith("kilkenny-B");
@@ -125,7 +129,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13b";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13c";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -415,7 +419,7 @@ async function startAR() {
         holder.rotation.x += (Math.max(MIN_LEAN, Math.min(MAX_LEAN, TILT, TILT - elev)) - holder.rotation.x) * 0.1;
       }
       if (current) {
-        const k = (current.r ? FOOT / current.r : current.scale * SCALE_X) * sizeX;
+        const k = (current.r ? FOOT / current.r : current.scale * SCALE_X) * sizeX * (params.has("nogrow") ? 1 : current.grow || 1);
         holder.scale.setScalar(k);
         const dip = current.r ? current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.02 * k : 0;
         holder.position.set(0, RIM_UP + CONE_GAP + dip, 0);
@@ -430,7 +434,8 @@ async function startAR() {
       if (DOTS) {   // red = rim point nearest the camera (cone fit), green = front edge of the model's ground
         _dv.copy(toCam).multiplyScalar(RIM.r / TW_CM).add(rig.position).addScaledVector(coneUp, RIM_UP);
         putDot(dotA, _dv.project(splatCamera));
-        _dv.set(0, -FOOT * Math.sin(holder.rotation.x), FOOT * Math.cos(holder.rotation.x)).add(holder.position).applyMatrix4(rig.matrixWorld);
+        const fr = current?.r ? current.r * holder.scale.x : FOOT;   // front edge of the (grown) ground disc
+        _dv.set(0, -fr * Math.sin(holder.rotation.x), fr * Math.cos(holder.rotation.x)).add(holder.position).applyMatrix4(rig.matrixWorld);
         putDot(dotM, _dv.project(splatCamera));
       }
       draw(splatScene, splatCamera);
