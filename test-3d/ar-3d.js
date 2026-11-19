@@ -31,7 +31,7 @@ const MODELS = {
 };
 const params = new URLSearchParams(location.search);
 for (const [k, m] of Object.entries(MODELS)) m.cupB = k.startsWith("kilkenny-B");
-const B_DY = params.has("bdy") ? parseFloat(params.get("bdy")) : -0.2;
+const B_DY = params.has("bdy") ? parseFloat(params.get("bdy")) : -0.15;
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
 const TUNE = params.has("tune");
 // 12r (2026-11-18, café meetings next day): the main site links here, so the status line and the
@@ -124,7 +124,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12v";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12w";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
