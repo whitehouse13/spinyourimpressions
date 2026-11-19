@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
 <title>KCC · Spin Your Impressions</title>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
@@ -12,6 +12,17 @@
   #hud { position: fixed; left: 8px; top: 8px; right: 8px; z-index: 5; color: #fff; pointer-events: none;
     font: 14px/1.35 -apple-system, sans-serif; background: rgba(0,0,0,.55); padding: 8px 10px; border-radius: 10px; }
   #start { position: fixed; inset: auto 20px 40px; z-index: 6; padding: 16px; font-size: 18px; border-radius: 12px; border: 0; }
+  /* 13b (2026-11-19, user: no name or sentence was visible in 3D): landmark caption + "More" link. */
+  #card { position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 6;
+    box-sizing: border-box; padding: 10px 14px 12px; border-radius: 14px; color: #f4eee1;
+    background: rgba(15, 42, 29, .84); border: 1px solid rgba(217, 178, 111, .45);
+    font: 14px/1.35 "Avenir Next", -apple-system, "Segoe UI", Roboto, sans-serif;
+    opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; pointer-events: none; }
+  #card.on { opacity: 1; transform: none; pointer-events: auto; }
+  #card h2 { margin: 0 0 3px; font: 700 18px/1.2 Georgia, serif; color: #d9b26f; }
+  #card p { margin: 0; }
+  #card a { display: inline-block; margin-top: 8px; padding: 7px 16px; border-radius: 999px; background: #f4eee1;
+    color: #0f2a1d; font-weight: 600; text-decoration: none; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -26,6 +37,7 @@
 <div id="stage"></div>
 <div id="hud">Loading…</div>
 <button id="start">Start camera</button>
-<script type="module" src="ar-3d.js?v=2026111913a"></script>
+<div id="card"><h2></h2><p></p><a href="#">More about it</a></div>
+<script type="module" src="ar-3d.js?v=2026111913b"></script>
 </body>
 </html>

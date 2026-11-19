@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kilkenny Landmarks in 3D</title>
+<meta name="description" content="The Kilkenny landmarks from your KCC cup, in 3D: turn them with your finger and read their story.">
+<style>
+  :root { --green-900: #0f2a1d; --green-700: #1f4d36; --green-500: #2f6f4f; --cream: #f4eee1; --gold: #d9b26f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--green-900); color: var(--cream);
+    font: 16px/1.5 "Avenir Next", -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { background: radial-gradient(ellipse at top, var(--green-500), var(--green-900) 70%) fixed; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+  header img { width: 44px; height: 44px; }
+  header a { color: var(--cream); text-decoration: none; font-weight: 600; }
+  main { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
+  #view { position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: 62vh; margin: 0 auto;
+    border-radius: 18px; overflow: hidden; background: rgba(0, 0, 0, .18); touch-action: pan-y; }
+  #view canvas { display: block; width: 100% !important; height: 100% !important; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 24px; text-align: center; opacity: .85; pointer-events: none; }
+  .tip { margin: 8px 0 0; text-align: center; font-size: 13px; opacity: .7; }
+  h1 { margin: 22px 0 6px; font: 700 30px/1.15 Georgia, serif; color: var(--gold); }
+  .where { margin: 0 0 12px; font-size: 14px; opacity: .75; }
+  .blurb { margin: 0 0 22px; font-size: 18px; }
+  nav h2 { margin: 26px 0 10px; font: 700 18px/1.2 Georgia, serif; }
+  nav ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  nav a { display: block; padding: 10px 12px; border-radius: 12px; color: var(--cream); text-decoration: none;
+    background: rgba(15, 42, 29, .6); border: 1px solid rgba(217, 178, 111, .35); }
+  nav a[aria-current] { border-color: var(--gold); color: var(--gold); }
+  .back { display: inline-block; margin-top: 24px; padding: 12px 22px; border-radius: 999px; background: var(--cream);
+    color: var(--green-900); font-weight: 600; text-decoration: none; }
+  [hidden] { display: none !important; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "splats": "https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+} }
+</script>
+</head>
+<body>
+<header><img src="../postcards/logo.png" alt=""><a href="../">Spin Your Impressions</a></header>
+<main>
+  <div id="view"><div id="status">Loading…</div></div>
+  <p class="tip" id="tip" hidden>Drag to turn the model</p>
+  <h1 id="name"></h1>
+  <p class="where" id="where"></p>
+  <p class="blurb" id="blurb"></p>
+  <nav><h2>More landmarks from your cup</h2><ul id="list"></ul></nav>
+  <a class="back" href="../test-3d/">Back to the camera</a>
+</main>
+<script type="module" src="landmarks.js"></script>
+</body>
+</html>

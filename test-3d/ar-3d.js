@@ -125,7 +125,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13a";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13b";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -172,6 +172,33 @@ const show = () => {
   hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · build ${BUILD}`;
 };
 window.kcc3d = state;
+// 13b (2026-11-19, user: in 3D they saw neither the name nor a sentence): a caption with the
+// landmark's name and blurb (data/cities.json) and a "More about it" link to its page on the site
+// (/landmarks/?l=<slug>). It stays 1.5 s after the target is lost so it doesn't flicker.
+const SLUGS = {
+  "kilkenny-A:0": "butter-slip", "kilkenny-A:1": "st-kierans", "kilkenny-A:2": "st-canice",
+  "kilkenny-B:0": "smithwicks", "kilkenny-B:1": "st-marys", "kilkenny-B:2": "kilkenny-castle",
+};
+const NOCARD = params.has("nocard");
+const card = document.getElementById("card");
+let cardKey = null, cardHide = 0;
+function showCard(key, lm) {
+  clearTimeout(cardHide);
+  if (NOCARD || !lm) return;
+  if (cardKey !== key) {
+    cardKey = key;
+    card.querySelector("h2").textContent = lm.name;
+    card.querySelector("p").textContent = lm.blurb;
+    const a = card.querySelector("a");
+    a.hidden = !SLUGS[key];
+    a.href = `../landmarks/?l=${SLUGS[key] || ""}`;
+  }
+  card.classList.add("on");
+}
+function hideCardSoon() {
+  clearTimeout(cardHide);
+  cardHide = setTimeout(() => card.classList.remove("on"), 1500);
+}
 window.addEventListener("error", (e) => { hud.style.display = "block"; hud.textContent = "ERROR " + e.message; });
 
 const viewer = new GS.DropInViewer({
@@ -197,7 +224,7 @@ addEventListener("touchmove", (e) => {
 }, { passive: true });
 addEventListener("touchend", (e) => { if (e.touches.length < 2) pinch = null; });
 addEventListener("pointerdown", (e) => {
-  if (e.target.id === "start" || pinch) return;
+  if (e.target.id === "start" || e.target.closest?.("#card") || pinch) return;
   const now = performance.now();
   // 12h: double tap / pinch only with ?tune — a stray pinch (size 1.23) counted as a
   // double tap and stopped the spin on iPhone (2026-11-14).
@@ -326,6 +353,7 @@ async function startAR() {
     const key = `${tg.variant}:${tg.landmark}`;
     anchor.onTargetFound = async () => {
       state.target = key;
+      showCard(key, manifest.variants.find((v) => v.id === tg.variant)?.landmarks[tg.landmark]);
       const m = MODELS[key];
       tracked = anchor;
       if (!m) { holder.visible = false; state.model = "none here"; show(); return; }
@@ -336,7 +364,7 @@ async function startAR() {
     };
     anchor.onTargetLost = () => {
       if (tracked !== anchor) return;   // a newer landmark already took over
-      state.target = "lost"; holder.visible = false; show();
+      state.target = "lost"; holder.visible = false; hideCardSoon(); show();
     };
   });
   await mindar.start();
