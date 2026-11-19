@@ -14,6 +14,9 @@ const CANICE = OLD
   ? { name: "St Canice's (square)", url: "data/st-canice-building.splat", scale: 1.2, lift: 0.8 }
   : { name: "St Canice's", url: "data/st-canice-cup.compressed.ply", r: 0.41, scale: 2.0, lift: 1.5, dx: -0.15 };
 const MODELS = {
+  // 12v (iPhone 12u video 2026-11-19): on cup B MindAR's anchor sits ~1.3 cm higher on the cup than on
+  // cup A (red dot), so with one rimY the B models floated ~1.4 cm higher (St Mary's ~2.7 cm, castle ~2 cm
+  // vs St Kieran's / St Canice's ~1 cm). B_DY lowers every cup-B model; ?bdy=<target widths>.
   // Panorama A, left to right: Butter Slip (A:0), St Kieran's College (A:1),
   // St Canice's Cathedral with the Round Tower (A:2) — names fixed 2026-11-09.
   "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.1, r: 0.53, scale: 1.5, lift: 1.5, dx: 0.12 },
@@ -27,6 +30,8 @@ const MODELS = {
   "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5, dx: 0.22 },
 };
 const params = new URLSearchParams(location.search);
+for (const [k, m] of Object.entries(MODELS)) m.cupB = k.startsWith("kilkenny-B");
+const B_DY = params.has("bdy") ? parseFloat(params.get("bdy")) : -0.2;
 const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
 const TUNE = params.has("tune");
 // 12r (2026-11-18, café meetings next day): the main site links here, so the status line and the
@@ -90,7 +95,7 @@ const place = () => {
     // window centre by a fixed amount per landmark (the inner layer turns to fixed stops): castle
     // ~0.22 target widths left, St Kieran's 0.12 left, St Canice's 0.15 right. Android only
     // (iPhone untouched until its own test); ?dx=<factor> scales it, ?dx=0 turns it off.
-    holder.position.set(DX_ON ? (current.dx || 0) * DX_K : 0, SCENE.rimY + GAP * LIFT_X + dip, -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
+    holder.position.set(DX_ON ? (current.dx || 0) * DX_K : 0, SCENE.rimY + GAP * LIFT_X + dip + (current.cupB ? B_DY : 0), -SCENE.cupRadius);  // up: wide models (castle, college) sat on the rim 2026-11-12
   } else holder.position.set(0, current.lift * LIFT_X, 0);
 };
 // Gravity (phone test 2026-11-11: looking down at the cup, "up" followed the
@@ -119,7 +124,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12u";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12v";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
