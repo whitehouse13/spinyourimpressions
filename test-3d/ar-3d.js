@@ -38,7 +38,9 @@ const ANDROID = /Android/i.test(navigator.userAgent);
 // 12s (iPhone screenshots 2026-11-18: every model at a different height / side): the Android
 // tuning (12m-12q) now runs on every phone; ?nolean / ?nofit / ?roll / ?shift / ?dx=0 turn parts off.
 const LEAN = !params.has("nolean");
-const FIT = !params.has("nofit");
+// 12t (iPhone video 2026-11-19: size jumped as fit swung 0.66 <-> 0.94): auto-fit is off by default,
+// every model has one fixed footprint instead (FOOT); ?fit turns auto-fit back on.
+const FIT = params.has("fit");
 const QUALITY = params.has("full") ? "full" : params.has("mid") ? "mid" : params.has("lite") ? "lite" : ANDROID ? "mid" : "full";   // 2026-11-14: user picked mid for Android
 // ?lift= / ?size= tune height above the cup and size without a redeploy.
 const LIFT_X = params.has("lift") ? parseFloat(params.get("lift")) : 1;
@@ -60,19 +62,25 @@ const DX_K = params.has("dx") ? parseFloat(params.get("dx")) : 1;
 const DX_ON = DX_K !== 0;
 let SCENE = null;           // manifest.scene: rimY, cupRadius
 let fitK = 1;               // < 1 when the model would go past the top of the screen
-// 12s: one clear height for every model — ~0.7 cm over the rim (1 target width ≈ 6.5 cm on the cup:
+// 12s/12t: one clear height for every model — front edge ~0.6 cm over the rim (12t) (1 target width ≈ 6.5 cm on the cup:
 // cupRadius 0.604 ↔ ~3.9 cm); no per-model `up`, no fit scaling. ?gap=<factor> scales it.
-const GAP = 0.108 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
+const GAP = 0.092 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
 // 12s: lean at least this much towards the viewer (user: "tilt a bit towards me"); ?minlean=<rad>.
-const MIN_LEAN = params.has("minlean") ? parseFloat(params.get("minlean")) : 0.2;
+const MIN_LEAN = params.has("minlean") ? parseFloat(params.get("minlean")) : 0.12;   // 12t: 0.2 -> 0.12, the lean lifted the back of the disc ~1 cm
+// 12t: one size for every model — ground-disc radius FOOT target widths (0.8 ≈ 5.2 cm, i.e. ~10 cm across,
+// a little wider than the 9 cm rim); before, footprints ran 10-14 cm (scale × r per model). ?foot=<tw>.
+const FOOT = params.has("foot") ? parseFloat(params.get("foot")) : 0.8;
 const place = () => {
   if (!current) return;
-  const k = current.scale * SCALE_X * sizeX * fitK;   // fitK: auto-fit to the screen top (12f); SCALE_X: phone test 2026-11-12, models looked small next to the cup
+  const k = (current.r ? FOOT / current.r : current.scale * SCALE_X) * sizeX * fitK;   // fitK: auto-fit to the screen top (12f); SCALE_X: phone test 2026-11-12, models looked small next to the cup
   holder.scale.setScalar(k);
   if (SCENE && current.r) {
     // Phone test 2026-11-12 (with gravity): models floated 3.5-10 cm above the rim;
     // half the tilt dip and no per-model `up` give ~1.5-2 cm.
-    const dip = 0.5 * current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.06 * k;
+    // 12t: the models' ground is at y≈0 (measured in the .ply: 1st percentile −0.01..−0.04 model units),
+    // so the old +0.06·k (~0.9 cm) only lifted them; dip = how far the front edge of the leaning disc
+    // drops, so that front edge clears the rim by GAP (~0.6 cm).
+    const dip = current.r * k * Math.max(0, Math.sin(holder.rotation.x)) + 0.03 * k;
     // up = extra height for wide models (phone test 2026-11-11: castle/college looked
     // like they sat on the rim, St Mary's looked right).
     // dx (12q, Android 12p video 2026-11-18): MindAR's anchor is the landmark, which sits off the
@@ -108,7 +116,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "12s";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "12t";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
