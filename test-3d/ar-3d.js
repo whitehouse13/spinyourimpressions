@@ -130,7 +130,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13d";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13e";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -174,7 +174,7 @@ const cone = { pose: null, target: -1, at: 0, err: 0, n: 0, k: 1 };
 window.kccCone = cone;
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · cam ${CAM ?? "auto"} ${camInfo.label} /${camInfo.backs} ${camInfo.w}x${camInfo.h} stall ${camInfo.stalls}${camInfo.longest ? "/" + camInfo.longest.toFixed(1) + "s" : ""} mute ${camInfo.mutes} · build ${BUILD}`;
 };
 window.kcc3d = state;
 // 13b (2026-11-19, user: in 3D they saw neither the name nor a sentence): a caption with the
@@ -293,8 +293,52 @@ async function startNoCam() {
   loop(renderer, scene, camera, turn);
 }
 
+// 13e (Android screen video 20.11, 13d): the camera picture went black twice for 4-7 s right after a
+// fast move, while the page kept drawing (fps 15-21) — the camera stream itself stalled. MindAR asks
+// only for "facingMode: environment", so on a phone with several back lenses the browser may switch
+// lenses on its own. Diagnosis in the HUD (?debug): cam = chosen back camera / all back cameras,
+// picture size, stall = how many times the picture froze > 0.5 s (and the longest, s), mute = how
+// many times the browser muted the track. ?cam=N opens back camera N (0-based, in the browser's list).
+const CAM = params.has("cam") ? parseInt(params.get("cam"), 10) : null;
+const camInfo = { label: "-", backs: 0, w: 0, h: 0, stalls: 0, longest: 0, mutes: 0 };
+window.kccCam = camInfo;
+async function pickBackCamera() {
+  if (!navigator.mediaDevices?.enumerateDevices) return null;
+  let devs = await navigator.mediaDevices.enumerateDevices();
+  if (CAM !== null && devs.every((d) => !d.label)) {   // labels appear only after camera permission
+    try { const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); s.getTracks().forEach((t) => t.stop()); } catch {}
+    devs = await navigator.mediaDevices.enumerateDevices();
+  }
+  const vids = devs.filter((d) => d.kind === "videoinput");
+  const backs = vids.filter((d) => /back|rear|environment|задн/i.test(d.label));
+  camInfo.backs = backs.length || vids.length;
+  if (CAM === null) return null;
+  const list = backs.length ? backs : vids;
+  return list[Math.max(0, Math.min(list.length - 1, CAM))]?.deviceId || null;
+}
+function watchCamera(video) {
+  const tr = video.srcObject?.getVideoTracks?.()[0];
+  if (tr) {
+    camInfo.label = (tr.label || "?").replace(/,? facing back/i, "").slice(0, 18);
+    tr.addEventListener("mute", () => { camInfo.mutes++; });
+  }
+  navigator.mediaDevices.enumerateDevices().then((ds) => {   // labels are known now
+    const v = ds.filter((d) => d.kind === "videoinput"), b = v.filter((d) => /back|rear|environment|задн/i.test(d.label));
+    camInfo.backs = b.length || v.length;
+  }).catch(() => {});
+  let last = -1, since = performance.now(), frozen = false;
+  setInterval(() => {
+    const now = performance.now(), ct = video.currentTime;
+    camInfo.w = video.videoWidth; camInfo.h = video.videoHeight;
+    if (ct !== last) { if (frozen) camInfo.longest = Math.max(camInfo.longest, (now - since) / 1000); last = ct; since = now; frozen = false; }
+    else if (!frozen && now - since > 500) { frozen = true; camInfo.stalls++; }
+    else if (frozen) camInfo.longest = Math.max(camInfo.longest, (now - since) / 1000);
+  }, 100);
+}
+
 async function startAR() {
   btn.remove();
+  const envId = await pickBackCamera().catch(() => null);
   const manifest = await (await fetch("data/cities.json")).json();
   SCENE = manifest.scene;
   const mindar = new MindARThree({
@@ -302,6 +346,7 @@ async function startAR() {
     uiLoading: "no", uiScanning: "no", uiError: "no",
     filterMinCF: 0.0001, filterBeta: 0.001, missTolerance: 20,
   });
+  if (envId) mindar.environmentDeviceId = envId;   // 13e ?cam=N
   const { renderer, scene, camera } = mindar;
   // Phone test 2026-11-03: 10 fps at full Retina resolution; draw at 1x.
   renderer.setPixelRatio(1);
@@ -373,6 +418,7 @@ async function startAR() {
     };
   });
   await mindar.start();
+  try { watchCamera(mindar.video); } catch {}
   // 13a: take MindAR's per-frame point matches (target px <-> camera px) and fit the cone to them.
   const ctrl = mindar.controller;
   if (!FLAT && ctrl?.tracker) {
