@@ -130,7 +130,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13e";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13f";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -174,7 +174,7 @@ const cone = { pose: null, target: -1, at: 0, err: 0, n: 0, k: 1 };
 window.kccCone = cone;
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · cam ${CAM ?? "auto"} ${camInfo.label} /${camInfo.backs} ${camInfo.w}x${camInfo.h} stall ${camInfo.stalls}${camInfo.longest ? "/" + camInfo.longest.toFixed(1) + "s" : ""} mute ${camInfo.mutes} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · cam ${CAM ?? "auto"} ${camInfo.label} /${camInfo.backs} ${camInfo.w}x${camInfo.h} stall ${camInfo.stalls}${camInfo.longest ? "/" + camInfo.longest.toFixed(1) + "s" : ""} mute ${camInfo.mutes} · luma ${camInfo.luma} dark ${camInfo.darks}${camInfo.darkLongest > 0.5 ? "/" + camInfo.darkLongest.toFixed(1) + "s" : ""}${REVIVE ? " revive " + camInfo.revives : ""} · build ${BUILD}`;
 };
 window.kcc3d = state;
 // 13b (2026-11-19, user: in 3D they saw neither the name nor a sentence): a caption with the
@@ -300,7 +300,13 @@ async function startNoCam() {
 // picture size, stall = how many times the picture froze > 0.5 s (and the longest, s), mute = how
 // many times the browser muted the track. ?cam=N opens back camera N (0-based, in the browser's list).
 const CAM = params.has("cam") ? parseInt(params.get("cam"), 10) : null;
-const camInfo = { label: "-", backs: 0, w: 0, h: 0, stalls: 0, longest: 0, mutes: 0 };
+// 13f (Android 13e videos 20.11): one back camera only (cam auto = camera 0) and stall 0 / mute 0
+// during an 8 s black picture — the frames kept coming. luma = mean brightness of the camera frames
+// themselves (0-255, sampled 4x a second): low while the screen is black = the camera sends black
+// frames; normal = the camera is fine and only the picture on screen went black. dark = black
+// stretches > 0.5 s (longest, s). ?revive re-opens the camera after 1.5 s of black frames (revive N).
+const REVIVE = params.has("revive");
+const camInfo = { label: "-", backs: 0, w: 0, h: 0, stalls: 0, longest: 0, mutes: 0, luma: -1, darks: 0, darkLongest: 0, revives: 0 };
 window.kccCam = camInfo;
 async function pickBackCamera() {
   if (!navigator.mediaDevices?.enumerateDevices) return null;
@@ -326,6 +332,33 @@ function watchCamera(video) {
     const v = ds.filter((d) => d.kind === "videoinput"), b = v.filter((d) => /back|rear|environment|задн/i.test(d.label));
     camInfo.backs = b.length || v.length;
   }).catch(() => {});
+  const pc = document.createElement("canvas"); pc.width = pc.height = 16;
+  const px = pc.getContext("2d", { willReadFrequently: true });
+  let darkSince = 0, reviving = false;
+  setInterval(() => {
+    if (!video.videoWidth) return;
+    try {
+      px.drawImage(video, 0, 0, 16, 16);
+      const d = px.getImageData(0, 0, 16, 16).data; let sum = 0;
+      for (let i = 0; i < d.length; i += 4) sum += d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+      camInfo.luma = Math.round(sum / 256);
+    } catch { camInfo.luma = -2; return; }
+    const now = performance.now();
+    if (camInfo.luma < 6) {
+      if (!darkSince) darkSince = now;
+      const dur = (now - darkSince) / 1000;
+      if (dur > 0.5 && dur - 0.25 <= 0.5) camInfo.darks++;
+      camInfo.darkLongest = Math.max(camInfo.darkLongest, dur);
+      if (REVIVE && dur > 1.5 && !reviving) {
+        reviving = true; camInfo.revives++;
+        const old = video.srcObject;
+        navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "environment" } }).then((st) => {
+          old?.getTracks().forEach((t) => t.stop());
+          video.srcObject = st; video.play().catch(() => {});
+        }).catch(() => {}).finally(() => { darkSince = 0; setTimeout(() => { reviving = false; }, 1500); });
+      }
+    } else darkSince = 0;
+  }, 250);
   let last = -1, since = performance.now(), frozen = false;
   setInterval(() => {
     const now = performance.now(), ct = video.currentTime;
