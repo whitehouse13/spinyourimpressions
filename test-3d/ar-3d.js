@@ -76,13 +76,14 @@ let fitK = 1;               // < 1 when the model would go past the top of the s
 // cupRadius 0.604 ↔ ~3.9 cm); no per-model `up`, no fit scaling. ?gap=<factor> scales it.
 const GAP = 0.062 * (params.has("gap") ? parseFloat(params.get("gap")) : 1);
 // 12s: lean at least this much towards the viewer (user: "tilt a bit towards me"); ?minlean=<rad>.
-const MIN_LEAN = params.has("minlean") ? parseFloat(params.get("minlean")) : 0.12;   // 12t: 0.2 -> 0.12, the lean lifted the back of the disc ~1 cm
+// 13d (user phone test 2026-11-20: more lean shows the model, not its underside): 0.12/0.16 -> 0.2/0.28.
+const MIN_LEAN = params.has("minlean") ? parseFloat(params.get("minlean")) : 0.2;   // 12t: 0.2 -> 0.12, the lean lifted the back of the disc ~1 cm
 // 12t: one size for every model — ground-disc radius FOOT target widths (0.8 ≈ 5.2 cm, i.e. ~10 cm across,
 // a little wider than the 9 cm rim); before, footprints ran 10-14 cm (scale × r per model). ?foot=<tw>.
 const FOOT = params.has("foot") ? parseFloat(params.get("foot")) : 0.72;   // 12u: 0.8 -> 0.72 (≈ the rim, 9.4 cm across), the disc overhung the rim towards the camera
 // 12u (iPhone 12t video 2026-11-19: St Mary's at eye level leaned 14° and floated ~2.5 cm, the castle
 // ~1.7 cm): the lean is capped so it no longer lifts the model when the phone is low; ?maxlean=<rad>.
-const MAX_LEAN = params.has("maxlean") ? parseFloat(params.get("maxlean")) : 0.16;
+const MAX_LEAN = params.has("maxlean") ? parseFloat(params.get("maxlean")) : 0.28;
 const place = () => {
   if (!current) return;
   const k = (current.r ? FOOT / current.r : current.scale * SCALE_X) * sizeX * fitK;   // fitK: auto-fit to the screen top (12f); SCALE_X: phone test 2026-11-12, models looked small next to the cup
@@ -129,7 +130,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13c";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13d";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
