@@ -32,7 +32,7 @@ const MODELS = {
   // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
   // ±sweep degrees around its facade instead of turning all the way round.
   "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
-  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5, dx: 0.22, grow: 1.33 },
+  "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5, dx: 0.22, grow: 1.5 },   // 13g: 1.33 -> 1.5 (user 20.11: castle a bit bigger)
 };
 const params = new URLSearchParams(location.search);
 for (const [k, m] of Object.entries(MODELS)) m.cupB = k.startsWith("kilkenny-B");
@@ -130,7 +130,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13f";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13g";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -174,7 +174,7 @@ const cone = { pose: null, target: -1, at: 0, err: 0, n: 0, k: 1 };
 window.kccCone = cone;
 const show = () => {
   const tilt = Math.round(holder.rotation.x * 180 / Math.PI);
-  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · cam ${CAM ?? "auto"} ${camInfo.label} /${camInfo.backs} ${camInfo.w}x${camInfo.h} stall ${camInfo.stalls}${camInfo.longest ? "/" + camInfo.longest.toFixed(1) + "s" : ""} mute ${camInfo.mutes} · luma ${camInfo.luma} dark ${camInfo.darks}${camInfo.darkLongest > 0.5 ? "/" + camInfo.darkLongest.toFixed(1) + "s" : ""}${REVIVE ? " revive " + camInfo.revives : ""} · build ${BUILD}`;
+  hud.textContent = `target ${state.target} · model ${state.model} · load ${state.load} · ${state.fps} fps · tilt ${tilt}° · size ${sizeX.toFixed(2)} · fit ${FIT ? fitK.toFixed(2) : "off"} · ${ANDROID ? "android" : "ios"}${QUALITY === "full" ? "" : " " + QUALITY} · ${params.has("nogravity") ? "gravity OFF" : hasGravity ? "gravity" : "no gravity"} · roll ${rawRoll.toFixed(2)}${NOROLL ? " cut" : ""} · dx ${DX_ON ? (current?.dx || 0).toFixed(2) : "off"} · shift ${NOSHIFT ? "off" : state.shift.toFixed(2)} · dk ${DEPTH ? depthK.toFixed(2) : "off"} · ${FLAT ? "flat" : `cone ${cone.pose ? cone.err.toFixed(1) + "px/" + cone.n : "-"} fov ${VFOV}`} · cam ${CAM ?? "auto"} ${camInfo.label} /${camInfo.backs} ${camInfo.w}x${camInfo.h} stall ${camInfo.stalls}${camInfo.longest ? "/" + camInfo.longest.toFixed(1) + "s" : ""} mute ${camInfo.mutes} ae ${camInfo.ae} af ${camInfo.af}${AE ? " (ae)" : ""} · luma ${camInfo.luma} dark ${camInfo.darks}${camInfo.darkLongest > 0.5 ? "/" + camInfo.darkLongest.toFixed(1) + "s" : ""}${REVIVE ? " revive " + camInfo.revives : ""} · build ${BUILD}`;
 };
 window.kcc3d = state;
 // 13b (2026-11-19, user: in 3D they saw neither the name nor a sentence): a caption with the
@@ -306,7 +306,11 @@ const CAM = params.has("cam") ? parseInt(params.get("cam"), 10) : null;
 // frames; normal = the camera is fine and only the picture on screen went black. dark = black
 // stretches > 0.5 s (longest, s). ?revive re-opens the camera after 1.5 s of black frames (revive N).
 const REVIVE = params.has("revive");
-const camInfo = { label: "-", backs: 0, w: 0, h: 0, stalls: 0, longest: 0, mutes: 0, luma: -1, darks: 0, darkLongest: 0, revives: 0 };
+// 13g (Android 13f video 20.11): luma 0 during the black picture — the camera itself sent black frames,
+// each time after a fast swing down onto the table; re-opening it (?revive x4) did not bring it back
+// sooner (~10 s). HUD ae/af = the camera's exposure and focus modes; ?ae asks for continuous ones.
+const AE = params.has("ae");
+const camInfo = { label: "-", backs: 0, w: 0, h: 0, stalls: 0, longest: 0, mutes: 0, luma: -1, darks: 0, darkLongest: 0, revives: 0, ae: "-", af: "-" };
 window.kccCam = camInfo;
 async function pickBackCamera() {
   if (!navigator.mediaDevices?.enumerateDevices) return null;
@@ -327,6 +331,9 @@ function watchCamera(video) {
   if (tr) {
     camInfo.label = (tr.label || "?").replace(/,? facing back/i, "").slice(0, 18);
     tr.addEventListener("mute", () => { camInfo.mutes++; });
+    const readModes = () => { const st = tr.getSettings?.() || {}; camInfo.ae = st.exposureMode || "-"; camInfo.af = st.focusMode || "-"; };
+    if (AE) tr.applyConstraints({ advanced: [{ exposureMode: "continuous" }, { focusMode: "continuous" }, { whiteBalanceMode: "continuous" }] }).catch(() => {}).finally(readModes);
+    else readModes();
   }
   navigator.mediaDevices.enumerateDevices().then((ds) => {   // labels are known now
     const v = ds.filter((d) => d.kind === "videoinput"), b = v.filter((d) => /back|rear|environment|задн/i.test(d.label));
