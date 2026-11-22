@@ -9,6 +9,10 @@
 // 2026-11-22 (2): bigger (footprint 0.3 -> 0.45), a little higher (gap 0.03 -> 0.08), and above the
 // top edge also when the card lies on a table (then it stands upright just behind the far edge) —
 // the "on the card" mode switched on too often with the card held at an angle.
+// 2026-11-22 (3) (video: looking down at the card, the upright model was seen from the top as a big
+// blob over the card): the model is now stood up relative to the SCREEN — seen from the side with a
+// slight lean, whatever the card's angle — and placed above the card's highest point on screen with a
+// gap, so it never covers the card, in the hand or on a table.
 // ?debug shows a status line; ?full / ?mid / ?lite pick the model quality (Android: mid,
 // the quality chosen on the cup test page 2026-11-14).
 import * as THREE from "three";
@@ -23,7 +27,7 @@ const FOOTPRINT = 0.45 * (params.has("size") ? parseFloat(params.get("size")) : 
 const RISE_MS = 900;
 const ONCARD = params.has("oncard");
 const LEAN = 0.25;        // rad, top towards the viewer (cup page 13d: 0.2-0.28)
-const GAP = 0.08;         // card widths between the card's top edge and the model's ground
+const GAP = 0.15;         // card widths between the card's top edge and the model's ground
 
 // Gravity "up" in camera axes (x right, y up, z towards the viewer), as on the cup page.
 const gravityUp = new THREE.Vector3(0, 1, 0);
@@ -139,8 +143,18 @@ async function start() {
       state.mode = flat ? "on card" : "above";
       if (flat) { up.copy(nrm); goal.copy(pos).addScaledVector(nrm, 0.01); }
       else {
-        up.copy(hasGravity ? gravityUp : cy);
-        goal.copy(pos).addScaledVector(cy, halfH + GAP);   // middle of the card's top edge
+        // highest point of the card on screen (screen y = y / -z), at the card centre's depth
+        const cx = side.set(1, 0, 0).applyQuaternion(rot);
+        let top = -Infinity;
+        for (const [a, b] of [[0.5, halfH], [-0.5, halfH], [0.5, -halfH], [-0.5, -halfH]]) {
+          goal.copy(pos).addScaledVector(cx, a).addScaledVector(cy, b);
+          if (goal.z < -1e-3) top = Math.max(top, goal.y / -goal.z);
+        }
+        const depth = Math.max(0.05, -pos.z);
+        goal.copy(pos);
+        if (top > -Infinity) goal.y = top * depth;
+        goal.y += GAP;
+        up.set(0, 1, 0);   // screen up: the model is always seen from the side
       }
       toCam.copy(goal).negate().addScaledVector(up, goal.dot(up));   // towards the camera, level
       if (toCam.lengthSq() < 1e-8) toCam.copy(nrm);
