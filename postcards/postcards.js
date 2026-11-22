@@ -5,8 +5,10 @@
 // Cards without a model yet show their text and "coming soon".
 // 2026-11-22 (iPhone video: the model lay on the card held in the hand, seen from the top, small):
 // like on the cup, the model now stands ABOVE the card's top edge, upright by the phone's gravity,
-// leaning a little towards the viewer, and bigger. When the card lies flat on a table (its face
-// within ~50° of straight up) the model stands on the card as before. ?oncard = always on the card.
+// leaning a little towards the viewer, and bigger. ?oncard = the old placement (on the card).
+// 2026-11-22 (2): bigger (footprint 0.3 -> 0.45), a little higher (gap 0.03 -> 0.08), and above the
+// top edge also when the card lies on a table (then it stands upright just behind the far edge) —
+// the "on the card" mode switched on too often with the card held at an angle.
 // ?debug shows a status line; ?full / ?mid / ?lite pick the model quality (Android: mid,
 // the quality chosen on the cup test page 2026-11-14).
 import * as THREE from "three";
@@ -17,11 +19,11 @@ const params = new URLSearchParams(location.search);
 const ANDROID = /Android/i.test(navigator.userAgent);
 const QUALITY = params.has("full") ? "full" : params.has("mid") ? "mid" : params.has("lite") ? "lite" : ANDROID ? "mid" : "full";
 const DEBUG = params.has("debug");
-const FOOTPRINT = 0.3 * (params.has("size") ? parseFloat(params.get("size")) : 1);   // model ground radius, card widths
+const FOOTPRINT = 0.45 * (params.has("size") ? parseFloat(params.get("size")) : 1);   // model ground radius, card widths
 const RISE_MS = 900;
 const ONCARD = params.has("oncard");
 const LEAN = 0.25;        // rad, top towards the viewer (cup page 13d: 0.2-0.28)
-const GAP = 0.03;         // card widths between the card's top edge and the model's ground
+const GAP = 0.08;         // card widths between the card's top edge and the model's ground
 
 // Gravity "up" in camera axes (x right, y up, z towards the viewer), as on the cup page.
 const gravityUp = new THREE.Vector3(0, 1, 0);
@@ -133,7 +135,7 @@ async function start() {
       cy.set(0, 1, 0).applyQuaternion(rot);           // card "up" (top edge of the picture)
       const dims = mindar.controller?.markerDimensions?.[trackedIndex];
       const halfH = dims ? dims[1] / dims[0] / 2 : 0.35;
-      const flat = ONCARD || (hasGravity && nrm.dot(gravityUp) > Math.cos(50 * Math.PI / 180));
+      const flat = ONCARD;
       state.mode = flat ? "on card" : "above";
       if (flat) { up.copy(nrm); goal.copy(pos).addScaledVector(nrm, 0.01); }
       else {
