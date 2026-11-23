@@ -41,7 +41,8 @@ const TILT = params.has("tilt") ? parseFloat(params.get("tilt")) : 0.5;
 const TUNE = params.has("tune");
 // 12r (2026-11-18, café meetings next day): the main site links here, so the status line and the
 // diagnostic dots show only with ?debug (or ?tune).
-const DEBUG = params.has("debug") || TUNE;
+// 13i (2026-11-23, user: remove the red/green dots and the text on top): no debug HUD/dots on the site any more.
+const DEBUG = false;
 // Per-platform tuning (2026-11-14): auto-fit is tuned on Android first; iPhone keeps
 // the 12e placement until its own test. ?fit / ?nofit force it either way.
 const ANDROID = /Android/i.test(navigator.userAgent);
@@ -130,7 +131,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13h";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13i";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
@@ -299,17 +300,17 @@ async function startNoCam() {
 // lenses on its own. Diagnosis in the HUD (?debug): cam = chosen back camera / all back cameras,
 // picture size, stall = how many times the picture froze > 0.5 s (and the longest, s), mute = how
 // many times the browser muted the track. ?cam=N opens back camera N (0-based, in the browser's list).
-const CAM = params.has("cam") ? parseInt(params.get("cam"), 10) : null;
+const CAM = null;   // 13i: ?cam test mode removed
 // 13f (Android 13e videos 20.11): one back camera only (cam auto = camera 0) and stall 0 / mute 0
 // during an 8 s black picture — the frames kept coming. luma = mean brightness of the camera frames
 // themselves (0-255, sampled 4x a second): low while the screen is black = the camera sends black
 // frames; normal = the camera is fine and only the picture on screen went black. dark = black
 // stretches > 0.5 s (longest, s). ?revive re-opens the camera after 1.5 s of black frames (revive N).
-const REVIVE = params.has("revive");
+const REVIVE = false;   // 13i: ?revive test mode removed
 // 13g (Android 13f video 20.11): luma 0 during the black picture — the camera itself sent black frames,
 // each time after a fast swing down onto the table; re-opening it (?revive x4) did not bring it back
 // sooner (~10 s). HUD ae/af = the camera's exposure and focus modes; ?ae asks for continuous ones.
-const AE = params.has("ae");
+const AE = false;   // 13i: ?ae test mode removed
 const camInfo = { label: "-", backs: 0, w: 0, h: 0, stalls: 0, longest: 0, mutes: 0, luma: -1, darks: 0, darkLongest: 0, revives: 0, ae: "-", af: "-" };
 window.kccCam = camInfo;
 async function pickBackCamera() {
