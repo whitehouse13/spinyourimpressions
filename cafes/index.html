@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>For Cafés · Spin Your Impressions</title>
-<meta name="description" content="A Kilkenny coffee cup with a spinning sleeve and AR landmarks. For cafés and shops.">
+<title>For Cafés &amp; Shops · Spin Your Impressions</title>
+<meta name="description" content="Kilkenny souvenir coffee cups and AR postcards. For cafés and souvenir shops.">
 <meta name="theme-color" content="#f3ead8">
 <style>
 :root {
@@ -63,6 +63,19 @@ ol.steps li::before { counter-increment: s; content: counter(s); width: 36px; he
 .qr.open { display: block; }
 .qr div { display: inline-block; padding: 14px; background: #fff; border-radius: 16px; }
 .qr img { width: min(240px, 66vw); height: auto; display: block; }
+.aud { display: flex; gap: 4px; margin: 16px 0 4px; padding: 4px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--line); }
+.aud button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; background: transparent;
+  color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.aud button[aria-selected="true"] { background: var(--accent); color: #fff; }
+@media (prefers-color-scheme: dark) { .aud button[aria-selected="true"] { color: #13100c; } }
+.pane[hidden] { display: none; }
+.strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+  margin: 18px -16px 6px; padding: 0 16px 8px; -webkit-overflow-scrolling: touch; }
+.strip figure { flex: 0 0 auto; margin: 0; scroll-snap-align: start; text-align: center; }
+.strip img { display: block; height: 190px; width: auto; border-radius: 10px;
+  border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(43,33,24,.12); }
+.strip figcaption { font-size: .8rem; color: var(--muted); margin-top: 6px; }
 footer { margin-top: 32px; text-align: center; font-size: .85rem; color: var(--muted); }
 footer a { color: inherit; }
 </style>
@@ -74,6 +87,12 @@ footer a { color: inherit; }
     <span>KCC</span>
   </header>
 
+  <div class="aud" role="tablist" aria-label="Who is this for">
+    <button role="tab" id="t-cafes" aria-controls="p-cafes" aria-selected="true">Cafés</button>
+    <button role="tab" id="t-shops" aria-controls="p-shops" aria-selected="false">Souvenir shops</button>
+  </div>
+
+  <div class="pane" id="p-cafes" role="tabpanel" aria-labelledby="t-cafes">
   <h1>A coffee cup your guests take home</h1>
   <p class="muted">A 16oz cup with a sleeve that turns. Spin it and Kilkenny landmarks appear in the window. Point a phone at it and they come to life.</p>
 
@@ -114,14 +133,92 @@ footer a { color: inherit; }
   </section>
 
   <section>
+    <h2>Your café, your cup</h2>
+    <p>Beyond our Kilkenny designs, we can make a cup that's yours: your logo on the sleeve, your building or street in the window, or a design made from scratch around your café's story.</p>
+    <div class="cards">
+      <div class="card"><b>Your logo</b><p>Add your café's logo to the sleeve of our Kilkenny cup.</p></div>
+      <div class="card"><b>Your own design</b><p>We draw your building, your street or your town and build the cup around it. AR can be added too.</p></div>
+      <div class="card"><b>From idea to print</b><p>We handle the design, the print files and production. Tell us what you have in mind and we'll come back with a proposal. Design work is quoted separately.</p></div>
+    </div>
+    <div class="stack" style="margin-top:12px">
+      <a class="btn" href="mailto:hello@spinyourimpressions.ie?subject=Custom%20cup%20for%20my%20caf%C3%A9&body=Caf%C3%A9%20name%3A%0ATown%3A%0AWhat%20you%20have%20in%20mind%20(logo%2C%20your%20building%2C%20your%20own%20design)%3A%0ARoughly%20how%20many%20cups%3A%0A">Ask about a custom cup</a>
+    </div>
+  </section>
+
+  <section>
     <h2>Get a price</h2>
     <p>We're planning our first print run now. Tell us roughly how many takeaway coffees you sell a day and how many cups you'd like to order, and we'll come back with a price.</p>
     <div class="stack">
       <a class="btn primary" href="mailto:hello@spinyourimpressions.ie?subject=Kilkenny%20cups%20for%20my%20caf%C3%A9&body=Caf%C3%A9%20name%3A%0ATown%3A%0ATakeaway%20coffees%20a%20day%20(roughly)%3A%0ACups%20you'd%20like%20to%20order%3A%0A">Email us</a>
       <a class="btn" href="https://ig.me/m/spin.your.impressions">Message on Instagram</a>
       <a class="btn" href="https://m.me/spin.your.impressions">Message on Facebook</a>
-      <button class="btn" id="qrBtn" aria-expanded="false">Show QR for this page</button>
     </div>
+  </section>
+  </div>
+
+  <div class="pane" id="p-shops" role="tabpanel" aria-labelledby="t-shops" hidden>
+  <h1>Kilkenny postcards that come alive</h1>
+  <p class="muted">Painted A6 postcards of Kilkenny's landmarks. Point a phone at the card and the landmark rises above it in 3D.</p>
+
+  <div class="strip" aria-label="The postcards">
+    <figure><img src="pc-castle.jpg" alt="Kilkenny Castle postcard" loading="lazy"><figcaption>Kilkenny Castle</figcaption></figure>
+    <figure><img src="pc-st-marys.jpg" alt="St Mary's postcard" loading="lazy"><figcaption>St Mary's</figcaption></figure>
+    <figure><img src="pc-st-canice.jpg" alt="St Canice's postcard" loading="lazy"><figcaption>St Canice's</figcaption></figure>
+    <figure><img src="pc-st-kierans.jpg" alt="St Kieran's postcard" loading="lazy"><figcaption>St Kieran's</figcaption></figure>
+    <figure><img src="pc-smithwicks.jpg" alt="Smithwick's postcard" loading="lazy"><figcaption>Smithwick's</figcaption></figure>
+    <figure><img src="pc-butter-slip.jpg" alt="Butter Slip postcard" loading="lazy"><figcaption>Butter Slip</figcaption></figure>
+  </div>
+  <p class="muted" style="font-size:.9rem">Swipe to see all six. Four come alive in 3D today; Smithwick's and Butter Slip are on the way.</p>
+
+  <section>
+    <h2>Try it on a postcard</h2>
+    <div class="stack">
+      <a class="btn primary" href="../postcards/">Point your phone at a postcard</a>
+      <a class="btn" href="../landmarks/">The six landmarks</a>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><span><b>Pick a card.</b> Each one is a painted Kilkenny landmark.</span></li>
+      <li><span><b>Scan the QR on the back.</b> The phone camera opens, no app to install.</span></li>
+      <li><span><b>Watch it rise.</b> The landmark appears above the card in 3D.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Why shops stock them</h2>
+    <div class="cards">
+      <div class="card"><b>A souvenir with a surprise</b><p>Visitors see it working on the spot, which makes it easy to sell.</p></div>
+      <div class="card"><b>Kilkenny, painted</b><p>Local landmarks in one hand-painted style, designed in Kilkenny.</p></div>
+      <div class="card"><b>Small and light</b><p>Easy to carry home or post, at a postcard price.</p></div>
+      <div class="card"><b>A collection</b><p>Six cards to collect, with more towns and landmarks on the way.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ways to work together</h2>
+    <div class="cards">
+      <div class="card"><b>Wholesale</b><p>Buy the cards outright and set your own shelf price.</p></div>
+      <div class="card"><b>Sale or return</b><p>Start with a small stock and pay for what sells.</p></div>
+      <div class="card"><b>Your own card</b><p>A card around your shop or your street, with AR too. Design work is quoted separately.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Get in touch</h2>
+    <p>Tell us about your shop and which cards you'd like, and we'll come back with prices and a sample pack.</p>
+    <div class="stack">
+      <a class="btn primary" href="mailto:hello@spinyourimpressions.ie?subject=AR%20postcards%20for%20my%20shop&body=Shop%20name%3A%0ATown%3A%0AWhich%20cards%3A%0AWholesale%20or%20sale%20or%20return%3A%0A">Email us</a>
+      <a class="btn" href="https://ig.me/m/spin.your.impressions">Message on Instagram</a>
+      <a class="btn" href="https://m.me/spin.your.impressions">Message on Facebook</a>
+    </div>
+  </section>
+  </div>
+
+  <section>
+    <button class="btn" id="qrBtn" aria-expanded="false">Show QR for this page</button>
     <div class="qr" id="qr"><div><img src="qr.svg" alt="QR code for spinyourimpressions.ie/cafes"></div>
       <p class="muted" style="margin-top:8px">spinyourimpressions.ie/cafes</p></div>
   </section>
@@ -141,6 +238,19 @@ footer a { color: inherit; }
       var p = v.play(); if (p && p.catch) p.catch(function () {});
     });
   });
+  var tabs = { cafes: document.getElementById('t-cafes'), shops: document.getElementById('t-shops') };
+  function show(k, push) {
+    Object.keys(tabs).forEach(function (n) {
+      var on = n === k;
+      tabs[n].setAttribute('aria-selected', on);
+      document.getElementById('p-' + n).hidden = !on;
+    });
+    if (k === 'shops') v.pause(); else { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+    if (push) history.replaceState(null, '', k === 'shops' ? '#shops' : location.pathname);
+  }
+  tabs.cafes.addEventListener('click', function () { show('cafes', true); });
+  tabs.shops.addEventListener('click', function () { show('shops', true); });
+  if (location.hash === '#shops') show('shops', false);
   var b = document.getElementById('qrBtn'), q = document.getElementById('qr');
   b.addEventListener('click', function () {
     var open = q.classList.toggle('open');
