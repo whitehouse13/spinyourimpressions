@@ -5,10 +5,10 @@
   "blurb": "Built in 1616 and lined with butter stalls on market days — its shady steps kept the butter cool, and made the lane famously slippery.",
   "city": "Kilkenny",
   "cup": "A",
-  "model": null,
-  "r": null,
-  "sweep": null,
-  "zoom": 1
+  "model": "../test-3d/data/butter-slip-cup.compressed.ply",
+  "r": 0.8,
+  "sweep": 25,
+  "zoom": 0.75
  },
  {
   "slug": "st-kierans",
@@ -41,7 +41,7 @@
   "model": "../test-3d/data/smithwicks-cup.compressed.ply",
   "r": 0.47,
   "sweep": 40,
-  "zoom": 0.7
+  "zoom": 0.9
  },
  {
   "slug": "st-marys",

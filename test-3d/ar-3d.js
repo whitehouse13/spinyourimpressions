@@ -24,6 +24,9 @@ const MODELS = {
   // ~1.5 r wide, but St Mary's stands 1.26 r tall and the low ones only 0.3-0.55 r (measured in the
   // .ply), so they read small. grow = (St Mary's area / own area)^(1/4) -> about the rim's width.
   // ?nogrow turns it off.
+  // 13j (2026-11-27): Butter Slip has no drone model (always crowded) — the approved painted 2.5D card
+  // (butter-slip-2d5/export-splat.py) as flat splats in a shallow relief; sways like Smithwick's.
+  "kilkenny-A:0": { name: "Butter Slip", url: "data/butter-slip-cup.compressed.ply", r: 0.8, scale: 1.6, lift: 1.5, sweep: 25 },
   "kilkenny-A:1": { name: "St Kieran's College", url: "data/st-kierans-cup.compressed.ply", up: 0.1, r: 0.53, scale: 1.5, lift: 1.5, dx: 0.12, grow: 1.55 },   // 13h: 1.37 -> 1.55 (user 20.11: college a bit bigger, as the castle)
   "kilkenny-A:2": CANICE,
   "kilkenny-B:1": OLD
@@ -131,7 +134,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13j";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13k";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");
