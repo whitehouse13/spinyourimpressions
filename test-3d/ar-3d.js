@@ -29,9 +29,9 @@ const MODELS = {
   "kilkenny-B:1": OLD
     ? { name: "St Mary's (old)", url: "data/st-marys.compressed.ply", scale: 0.9, lift: 0.6 }
     : { name: "St Mary's", url: "data/st-marys-cup.compressed.ply", r: 0.34, scale: 1.9, lift: 1.5 },
-  // 2026-11-04 shoot. Smithwick's was filmed from the street only: it sways
-  // ±sweep degrees around its facade instead of turning all the way round.
-  "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.21, scale: 1.6, lift: 1.5, sweep: 40 },
+  // 2026-11-25 shoot, 4K retrain + cleanup (smithwicks-facade.py, 13j): facade only, filmed from the
+  // street, so it sways ±sweep degrees around the cup view instead of turning all the way round.
+  "kilkenny-B:0": { name: "Smithwick's", url: "data/smithwicks-cup.compressed.ply", r: 0.47, scale: 1.6, lift: 1.5, sweep: 40 },
   "kilkenny-B:2": { name: "Kilkenny Castle", url: "data/kilkenny-castle-cup.compressed.ply", up: 0.1, r: 0.48, scale: 1.9, lift: 1.5, dx: 0.22, grow: 1.5 },   // 13g: 1.33 -> 1.5 (user 20.11: castle a bit bigger)
 };
 const params = new URLSearchParams(location.search);
@@ -131,7 +131,7 @@ addEventListener("deviceorientation", (e) => {
 async function askMotion() {   // iOS: must be called from the tap on Start
   try { if (typeof DeviceOrientationEvent?.requestPermission === "function") await DeviceOrientationEvent.requestPermission(); } catch {}
 }
-const BUILD = "13i";   // shown in the HUD so the phone test shows which build is live
+const BUILD = "13j";   // shown in the HUD so the phone test shows which build is live
 const hud = document.getElementById("hud");
 if (!DEBUG) hud.style.display = "none";
 const btn = document.getElementById("start");

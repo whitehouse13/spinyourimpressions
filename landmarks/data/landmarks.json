@@ -39,7 +39,7 @@
   "city": "Kilkenny",
   "cup": "B",
   "model": "../test-3d/data/smithwicks-cup.compressed.ply",
-  "r": 0.21,
+  "r": 0.47,
   "sweep": 40,
   "zoom": 0.7
  },
