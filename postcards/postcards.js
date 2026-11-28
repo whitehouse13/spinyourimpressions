@@ -170,7 +170,8 @@ async function start() {
       // leaning tips the front of the ground disc down: lift it so it stays over the edge
       holder.position.set(0, flat ? 0 : current.r * k * Math.sin(LEAN), 0);
       if (drag === null) phase += 0.004;
-      spin.rotation.y = userYaw + phase;
+      // sweep (Smithwick's, Butter Slip — seen from one side only): sway ±sweep° instead of a full turn
+      spin.rotation.y = userYaw + (current.sweep ? Math.sin(phase * 2.2) * current.sweep * Math.PI / 180 : phase);
       splatCamera.projectionMatrix.copy(camera.projectionMatrix);
       // MindAR's near plane is 10, past the shrunk model; use near 0.01, far 100.
       splatCamera.projectionMatrix.elements[10] = -100.01 / 99.99;
